@@ -7,24 +7,81 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceResult extends Model
 {
+    use HasFactory;
+
     protected $table = 'service_results';
 
-    public $timestamps = false;
-
     protected $fillable = [
+        'service_id',
+        'patient_id',
+        'visit_id',
         'patient_service_id',
+        'result_type',
         'result_text',
+        'result_numeric',
         'result_file_path',
+        'result_file_name',
+        'notes',
+        'status',
         'recorded_by',
+        'approved_by',
+        'approved_at',
+        'approval_notes',
     ];
 
-    public function patientService()
+    protected $casts = [
+        'result_numeric' => 'decimal:2',
+        'approved_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    public function service()
     {
-        return $this->belongsTo(PatientService::class);
+        return $this->belongsTo(Service::class);
+    }
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
+    public function visit()
+    {
+        return $this->belongsTo(PatientVisit::class);
     }
 
     public function recorder()
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function isEditable()
+    {
+        return in_array($this->status, ['draft', 'rejected']);
+    }
+
+    public function isApproved()
+    {
+        return $this->status === 'approved';
+    }
+
+    public function getResultValue()
+    {
+        switch ($this->result_type) {
+            case 'numeric':
+                return $this->result_numeric;
+            case 'text':
+                return $this->result_text;
+            case 'file':
+                return $this->result_file_name;
+            default:
+                return null;
+        }
     }
 }

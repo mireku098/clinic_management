@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PatientController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,3 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// API Routes for Service Results
+Route::get('/patients/{patientId}/visits', [PatientController::class, 'getPatientVisits']);
+Route::get('/patients/search', [PatientController::class, 'searchPatients']);
