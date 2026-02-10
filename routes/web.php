@@ -43,8 +43,16 @@ Route::get('/patients/add', function () {
 
 Route::post('/patients/add', [PatientController::class, 'store'])->name('patients.store');
 
+Route::get('/patients/{id}/json', [PatientController::class, 'getPatientJson'])->name('patients.json');
+
 Route::get('/patients/context', [PatientController::class, 'context'])->name('patients.context');
 Route::get('/patients/{patientCode}/visits', [PatientController::class, 'visits'])->name('patients.visits');
+
+// Patient Context API Routes
+Route::get('/api/patients/{patientCode}/overview', [PatientController::class, 'getOverviewData']);
+Route::get('/api/patients/{patientCode}/vitals', [PatientController::class, 'getVitalsData']);
+Route::get('/api/patients/{patientCode}/medical-history', [PatientController::class, 'getMedicalHistoryData']);
+Route::get('/api/patients/{patientCode}/billing', [PatientController::class, 'getBillingData']);
 
 // Move specific visit routes before parameterized ones
 Route::get('/visits', [VisitController::class, 'index'])->name('visits');
@@ -58,6 +66,7 @@ Route::post('/visits', [VisitController::class, 'store'])->name('visits.store');
 Route::get('/visits/{visit}', [VisitController::class, 'show'])->name('visits.show');
 
 // API routes for patient context modules
+Route::get('/api/patients', [PatientController::class, 'getPatientsApi']);
 Route::get('/api/patients/{patientCode}/overview', [PatientController::class, 'getOverviewData']);
 Route::get('/api/patients/{patientCode}/visits', [PatientController::class, 'getVisitsData']);
 Route::get('/api/patients/{patientCode}/bills', [PatientController::class, 'getBillsData']);
@@ -200,13 +209,13 @@ Route::post('/service-results/{id}/approve', [ServiceResultController::class, 'a
 | Billing & Payments
 |--------------------------------------------------------------------------
 */
-Route::get('/billing', function () {
-    return view('billing');
-})->name('billing');
-
-Route::get('/payments', function () {
-    return view('payments');
-})->name('payments');
+Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing');
+Route::get('/billing/get-bills', [App\Http\Controllers\BillingController::class, 'getBills'])->name('billing.get-bills');
+Route::get('/billing/get-bill-details/{billId}', [App\Http\Controllers\BillingController::class, 'getBillDetails'])->name('billing.get-bill-details');
+Route::post('/billing/create-from-package', [App\Http\Controllers\BillingController::class, 'createFromPackage'])->name('billing.create-from-package');
+Route::post('/billing/create-from-services', [App\Http\Controllers\BillingController::class, 'createFromServices'])->name('billing.create-from-services');
+Route::post('/billing/process-payment', [App\Http\Controllers\BillingController::class, 'processPayment'])->name('billing.process-payment');
+Route::put('/billing/update-payment-status/{billId}', [App\Http\Controllers\BillingController::class, 'updatePaymentStatus'])->name('billing.update-payment-status');
 
 /*
 |--------------------------------------------------------------------------
@@ -218,12 +227,23 @@ Route::get('/users', function () {
 })->name('users');
 
 Route::get('/packages', function () {
-    return view('packages');
+    $packages = \App\Models\Package::with('services.service')->get();
+    return view('packages', compact('packages'));
 })->name('packages');
 
 Route::get('/packages/add', function () {
-    return view('packages.add');
+    $services = \App\Models\Service::where('status', 'active')->get();
+    return view('packages.add', compact('services'));
 })->name('packages.add');
+
+Route::get('/packages/{id}/edit', function ($id) {
+    $package = \App\Models\Package::with('services')->findOrFail($id);
+    $services = \App\Models\Service::where('status', 'active')->get();
+    return view('packages.edit', compact('package', 'services'));
+})->name('packages.edit');
+
+Route::post('/packages', [App\Http\Controllers\PackageController::class, 'store'])->name('packages.store');
+Route::put('/packages/{id}', [App\Http\Controllers\PackageController::class, 'update'])->name('packages.update');
 
 /*
 |--------------------------------------------------------------------------
