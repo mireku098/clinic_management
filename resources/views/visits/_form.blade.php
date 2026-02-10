@@ -56,12 +56,12 @@
                 <div class="col-md-4">
                     <label for="visit_date" class="form-label">Visit Date</label>
                     <input type="date" class="form-control date-picker" id="visit_date" name="visit_date" 
-                           value="{{ isset($visit) ? $visit->visit_date : (old('visit_date') ?? date('Y-m-d')) }}" required />
+                           value="{{ isset($visit) ? ($visit->visit_date ? $visit->visit_date->format('Y-m-d') : old('visit_date')) : (old('visit_date') ?? date('Y-m-d')) }}" required />
                 </div>
                 <div class="col-md-4">
                     <label for="visit_time" class="form-label">Visit Time</label>
                     <input type="time" class="form-control" id="visit_time" name="visit_time" 
-                           value="{{ isset($visit) ? $visit->visit_time : (old('visit_time') ?? date('H:i:s')) }}" required />
+                           value="{{ isset($visit) ? ($visit->visit_time ? $visit->visit_time->format('H:i') : old('visit_time')) : (old('visit_time') ?? date('H:i')) }}" required />
                 </div>
                 <div class="col-md-4">
                     <label for="visit_type" class="form-label">Visit Type</label>
@@ -195,8 +195,9 @@
                 <div class="col-md-3">
                     <label for="blood_pressure" class="form-label">Blood Pressure</label>
                     <input type="text" class="form-control" id="blood_pressure" name="blood_pressure"
-                        placeholder="120/80" value="{{ isset($visit) ? $visit->blood_pressure : old('blood_pressure') }}" />
-                    <small class="text-muted">Format: 120/80</small>
+                        placeholder="120/80" value="{{ isset($visit) ? $visit->blood_pressure : old('blood_pressure') }}" 
+                        pattern="\d{2,3}\/\d{2,3}" title="Please enter blood pressure in format 120/80" />
+                    <small class="text-muted">Format: 120/80 (systolic/diastolic)</small>
                 </div>
                 <div class="col-md-3">
                     <div class="mb-3">
@@ -213,12 +214,6 @@
                             placeholder="70.0" value="{{ isset($visit) ? $visit->weight : old('weight') }}" />
                         <!-- <small class="text-muted">No range restrictions</small> -->
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="height" class="form-label">Height (cm)</label>
-                    <input type="number" class="form-control" id="height" name="height"
-                        placeholder="170" value="{{ isset($visit) ? $visit->height : old('height') }}" />
-                    <!-- <small class="text-muted">No range restrictions</small> -->
                 </div>
             </div>
             <div class="row">
@@ -345,6 +340,15 @@
 <script>
 document.getElementById("visit_form").addEventListener("submit", function(e) {
     e.preventDefault();
+    
+    // Append seconds to visit_time to match H:i:s format
+    const visitTimeInput = document.getElementById('visit_time');
+    if (visitTimeInput && visitTimeInput.value) {
+        // If time is in HH:MM format, append :00 seconds
+        if (visitTimeInput.value.match(/^\d{2}:\d{2}$/)) {
+            visitTimeInput.value = visitTimeInput.value + ':00';
+        }
+    }
     
     // Populate hidden fields with selected services and package data
     document.getElementById('selected_services_data').value = JSON.stringify(selectedServices);
@@ -523,44 +527,23 @@ document.addEventListener('DOMContentLoaded', function() {
     @if(isset($visit))
         console.log('Edit mode detected');
         
-        // Load existing package (get from selected dropdown)
-        const packageSelect = document.getElementById('package_selection');
-        console.log('Package select element:', packageSelect);
-        console.log('Package select value:', packageSelect?.value);
-        
-        if (packageSelect && packageSelect.value) {
-            const selectedOption = packageSelect.options[packageSelect.selectedIndex];
-            console.log('Selected package option:', selectedOption);
+        // Load existing package from backend data first
+        @if(isset($selectedPackage))
+            console.log('Loading package from backend:', @json($selectedPackage));
+            selectedPackage = @json($selectedPackage);
             
-            if (selectedOption && selectedOption.value) {
-                selectedPackage = {
-                    id: selectedOption.value,
-                    name: selectedOption.getAttribute('data-name') || selectedOption.text.split(' - ')[0],
-                    price: parseFloat(selectedOption.getAttribute('data-price'))
-                };
-                console.log('Loaded package:', selectedPackage);
+            // Set the package dropdown
+            const packageSelect = document.getElementById('package_selection');
+            if (packageSelect && selectedPackage && selectedPackage.id) {
+                packageSelect.value = selectedPackage.id;
+                console.log('Set package dropdown to:', selectedPackage.id);
             }
-        }
+        @endif
         
-        // Load existing services
-        console.log('Checking for services data...');
-        console.log('Visit selected_services raw:', @json(isset($visit->selected_services) ? $visit->selected_services : 'NOT_SET'));
-        
-        @if(isset($visit) && $visit->selected_services)
-            console.log('Services data condition is TRUE');
-            const servicesData = JSON.parse(@json($visit->selected_services));
-            console.log('Services data from backend:', servicesData);
-            console.log('Services data type:', typeof servicesData);
-            console.log('Services data isArray:', Array.isArray(servicesData));
-            
-            if (servicesData && Array.isArray(servicesData)) {
-                selectedServices = servicesData;
-                console.log('Loaded services:', selectedServices);
-            } else {
-                console.log('Services data is not a valid array:', servicesData);
-            }
-        @else
-            console.log('No selected services data found in visit or condition is false');
+        // Load existing services from backend data
+        @if(isset($selectedServices))
+            console.log('Loading services from backend:', @json($selectedServices));
+            selectedServices = @json($selectedServices);
         @endif
         
         console.log('Before UI update - Package:', selectedPackage, 'Services:', selectedServices);
@@ -752,28 +735,82 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // BMI Calculation
     const weightInput = document.getElementById('weight');
-    const heightInput = document.getElementById('height');
     const bmiInput = document.getElementById('bmi');
+    let currentPatientHeight = null; // Store current patient's height
     
     function calculateBMI() {
         const weight = parseFloat(weightInput.value);
-        const height = parseFloat(heightInput.value);
         
-        if (weight > 0 && height > 0) {
+        console.log('BMI Calculation - Weight:', weight, 'Patient Height:', currentPatientHeight);
+        
+        if (weight > 0 && currentPatientHeight > 0) {
             // Convert height from cm to meters
-            const heightInMeters = height / 100;
+            const heightInMeters = currentPatientHeight / 100;
+            console.log('BMI Calculation - Height in meters:', heightInMeters);
+            
+            // Validate reasonable ranges
+            if (weight > 500 || weight < 1) {
+                console.log('Invalid weight value:', weight);
+                bmiInput.value = '';
+                return;
+            }
+            
+            if (currentPatientHeight > 300 || currentPatientHeight < 50) {
+                console.log('Invalid height value:', currentPatientHeight);
+                bmiInput.value = '';
+                return;
+            }
+            
             const bmi = weight / (heightInMeters * heightInMeters);
+            console.log('BMI Calculation - Calculated BMI:', bmi);
+            
+            // Validate BMI range (should be between 5 and 100)
+            if (bmi > 100 || bmi < 5) {
+                console.log('BMI out of reasonable range:', bmi);
+                bmiInput.value = '';
+                return;
+            }
+            
             bmiInput.value = bmi.toFixed(1);
         } else {
             bmiInput.value = '';
         }
     }
     
-    // Add event listeners for BMI calculation
-    if (weightInput && heightInput && bmiInput) {
-        weightInput.addEventListener('input', calculateBMI);
-        heightInput.addEventListener('input', calculateBMI);
+    // Fetch patient data including height
+    function fetchPatientData(patientId) {
+        fetch(`/patients/${patientId}/json`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentPatientHeight = data.patient.height;
+                    console.log('Patient height loaded:', currentPatientHeight);
+                    
+                    // Trigger BMI calculation if weight is already entered
+                    if (weightInput.value) {
+                        calculateBMI();
+                    }
+                } else {
+                    console.error('Failed to fetch patient data:', data.message);
+                    currentPatientHeight = null;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching patient data:', error);
+                currentPatientHeight = null;
+            });
     }
+    
+    // Add event listener for weight input only (height comes from patient record)
+    if (weightInput && bmiInput) {
+        weightInput.addEventListener('input', calculateBMI);
+    }
+    
+    // Auto-load patient height for edit visits
+    @if(isset($visit) && isset($visit->patient_id))
+        // When editing a visit, automatically load the patient's height
+        fetchPatientData({{ $visit->patient_id }});
+    @endif
     
     if (patientSearchInput) {
         let searchTimeout;
@@ -856,6 +893,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 patientIdInput.value = patientId;
                 patientNameInput.value = patientName;
                 patientSearchInput.value = `${patientName} (${patientCode})`;
+                
+                // Fetch patient data including height
+                fetchPatientData(patientId);
                 
                 // Clear results
                 patientResultsDiv.innerHTML = '';

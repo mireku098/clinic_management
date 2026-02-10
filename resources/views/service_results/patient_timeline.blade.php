@@ -16,10 +16,12 @@
                 ({{ $patient->patient_code }})
             </p>
         </div>
-        <a href="{{ route('patients.context') }}?code={{ $patient->patient_code }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-1"></i>Back to Patient
+        <a href="{{ route('visits') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Visits
         </a>
     </div>
+
+    @php $mostRecentVisit = $visits->first(); @endphp
 
     <div class="row">
         <!-- Service Results Timeline -->
@@ -45,7 +47,18 @@
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <div>
-                                                    <h6 class="mb-1">{{ $result->service->service_name }}</h6>
+                                                    <h6 class="mb-1">
+                                                        @if($result->package)
+                                                            <span class="badge bg-primary me-2">
+                                                                <i class="fas fa-box me-1"></i>Package
+                                                            </span>
+                                                            {{ $result->package->package_name }}
+                                                        @elseif($result->service)
+                                                            {{ $result->service->service_name }}
+                                                        @else
+                                                            Unknown Service/Package
+                                                        @endif
+                                                    </h6>
                                                     <small class="text-muted">
                                                         <i class="fas fa-calendar me-1"></i>
                                                         {{ is_object($result->created_at) ? $result->created_at->format('M d, Y H:i') : \Carbon\Carbon::parse($result->created_at)->format('M d, Y H:i') }}
@@ -98,10 +111,17 @@
                                                     Recorded by: {{ $result->recorder ? $result->recorder->name : 'System' }}
                                                 </small>
                                                 <div>
+                                                    @if($result->service)
                                                     <a href="{{ route('service-results.result-page', ['patient' => $result->patient_id, 'visit' => $result->visit_id, 'service' => $result->service_id]) }}" 
                                                        class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-edit me-1"></i>View/Edit
                                                     </a>
+                                                @else
+                                                    <a href="{{ route('service-results.create') }}?patient_id={{ $result->patient_id }}&package_id={{ $result->package_id }}&visit_id={{ $result->visit_id }}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-edit me-1"></i>View/Edit
+                                                    </a>
+                                                @endif
                                                 </div>
                                             </div>
                                         </div>
@@ -127,37 +147,100 @@
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-plus-circle text-success me-2"></i>
-                        Add New Result
+                        Add Service & Package Results
+                        @if($mostRecentVisit)
+                            <small class="text-muted ms-2">
+                                (From visit on {{ is_object($mostRecentVisit->visit_date) ? $mostRecentVisit->visit_date->format('M d, Y') : \Carbon\Carbon::parse($mostRecentVisit->visit_date)->format('M d, Y') }})
+                            </small>
+                        @endif
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- Show Services -->
                     @if($availableServices)
-                        <p class="text-muted mb-3">Select a service to add a result:</p>
-                        
+                        @php $hasServices = false; @endphp
                         @foreach($availableServices as $available)
-                        <div class="border rounded p-3 mb-3">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <h6 class="mb-1">{{ $available['service']->service_name }}</h6>
-                                    <small class="text-muted">
-                                        <i class="fas fa-calendar me-1"></i>
-                                        Visit: {{ is_object($available['visit']->visit_date) ? $available['visit']->visit_date->format('M d, Y') : \Carbon\Carbon::parse($available['visit']->visit_date)->format('M d, Y') }}
-                                    </small>
+                            @if(isset($available['service']))
+                                @if(!$hasServices)
+                                    <h6 class="text-info mb-3">
+                                        <i class="fas fa-flask me-2"></i>Available Services
+                                    </h6>
+                                    @php $hasServices = true; @endphp
+                                @endif
+                                
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                <span class="badge bg-info me-2">
+                                                    <i class="fas fa-flask me-1"></i>Service
+                                                </span>
+                                                {{ $available['service']->service_name }}
+                                            </h6>
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                Visit: {{ is_object($available['visit']->visit_date) ? $available['visit']->visit_date->format('M d, Y') : \Carbon\Carbon::parse($available['visit']->visit_date)->format('M d, Y') }}
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-info">{{ ucfirst($available['service']->result_type) }}</span>
+                                    </div>
+                                    
+                                    <a href="{{ route('service-results.result-page', ['patient' => $patient->id, 'visit' => $available['visit']->id, 'service' => $available['service']->id]) }}" 
+                                       class="btn btn-sm btn-primary w-100">
+                                        <i class="fas fa-plus me-1"></i>Add Service Result
+                                    </a>
                                 </div>
-                                <span class="badge bg-info">{{ ucfirst($available['service']->result_type) }}</span>
-                            </div>
-                            
-                            <a href="{{ route('service-results.result-page', ['patient' => $patient->id, 'visit' => $available['visit']->id, 'service' => $available['service']->id]) }}" 
-                               class="btn btn-sm btn-primary w-100">
-                                <i class="fas fa-plus me-1"></i>Add Result
-                            </a>
-                        </div>
+                            @endif
                         @endforeach
-                    @else
+                    @endif
+                    
+                    <!-- Show Package -->
+                    @if($availableServices)
+                        @php $hasPackage = false; @endphp
+                        @foreach($availableServices as $available)
+                            @if(isset($available['package']))
+                                @if(!$hasPackage)
+                                    @if($hasServices)
+                                        <hr>
+                                    @endif
+                                    <h6 class="text-primary mb-3">
+                                        <i class="fas fa-box me-2"></i>Available Package
+                                    </h6>
+                                    @php $hasPackage = true; @endphp
+                                @endif
+                                
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                <span class="badge bg-primary me-2">
+                                                    <i class="fas fa-box me-1"></i>Package
+                                                </span>
+                                                {{ $available['package']->package_name }}
+                                            </h6>
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                Visit: {{ is_object($available['visit']->visit_date) ? $available['visit']->visit_date->format('M d, Y') : \Carbon\Carbon::parse($available['visit']->visit_date)->format('M d, Y') }}
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-info">Text</span>
+                                    </div>
+                                    
+                                    <a href="{{ route('service-results.create') }}?patient_id={{ $patient->id }}&package_id={{ $available['package']->id }}&visit_id={{ $available['visit']->id }}" 
+                                       class="btn btn-sm btn-primary w-100">
+                                        <i class="fas fa-plus me-1"></i>Add Package Result
+                                    </a>
+                                </div>
+                            @endif
+                        @endforeach
+                    @endif
+                    
+                    <!-- No Services or Packages -->
+                    @if(!$availableServices)
                         <div class="text-center py-4">
                             <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                            <h6 class="text-muted">All Services Have Results</h6>
-                            <p class="text-muted small">All services for this patient have results recorded.</p>
+                            <h6 class="text-muted">All Results Recorded</h6>
+                            <p class="text-muted small">All services and packages for this patient have results recorded.</p>
                         </div>
                     @endif
                 </div>

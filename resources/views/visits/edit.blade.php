@@ -20,7 +20,11 @@
     <!-- Edit Visit Form -->
     <div class="row">
         <div class="col-lg-8">
-            @include('visits._form', ['action' => isset($visit) ? route('visits.update', $visit->id) : route('visits.store')])
+            @include('visits._form', [
+                'action' => isset($visit) ? route('visits.update', $visit->id) : route('visits.store'),
+                'selectedServices' => $selectedServices ?? [],
+                'selectedPackage' => $selectedPackage ?? null
+            ])
         </div>
     </div>
   </div>

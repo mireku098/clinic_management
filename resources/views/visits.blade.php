@@ -154,7 +154,7 @@
                 <th>Date</th>
                 <th>Time</th>
                 <th>Type</th>
-                <th>Services</th>
+                <th>Services & Packages</th>
                 <th>Vital Signs</th>
                 <th>Attended By</th>
                 <!-- <th>Status</th> -->
@@ -189,17 +189,38 @@
                     </span>
                   </td>
                   <td>
-                    @if($visit->services && $visit->services->count() > 0)
-                      <div class="d-flex flex-wrap gap-1">
-                        @foreach($visit->services as $patientService)
-                          @if($patientService->service)
-                          <span class="badge bg-secondary">{{ $patientService->service->service_name }}</span>
-                          @endif
-                        @endforeach
-                      </div>
-                    @else
-                      <span class="text-muted">No services</span>
-                    @endif
+                    <div class="d-flex flex-wrap gap-1">
+                      <!-- Show Package from JSON data if exists -->
+                      @if($visit->selected_package)
+                        @php
+                          $packageData = json_decode($visit->selected_package, true);
+                        @endphp
+                        @if($packageData && isset($packageData['name']))
+                          <span class="badge bg-success">
+                            <i class="fas fa-box me-1"></i>{{ $packageData['name'] }}
+                          </span>
+                        @endif
+                      @endif
+                      
+                      <!-- Show Individual Services from JSON data if exist -->
+                      @if($visit->selected_services)
+                        @php
+                          $servicesData = json_decode($visit->selected_services, true);
+                        @endphp
+                        @if($servicesData && is_array($servicesData))
+                          @foreach($servicesData as $serviceData)
+                            @if(isset($serviceData['name']))
+                            <span class="badge bg-secondary">{{ $serviceData['name'] }}</span>
+                            @endif
+                          @endforeach
+                        @endif
+                      @endif
+                      
+                      <!-- Show if neither package nor services -->
+                      @if(!$visit->selected_package && !$visit->selected_services)
+                        <span class="text-muted">No services/packages</span>
+                      @endif
+                    </div>
                   </td>
                   <td>
                     <div class="small">
@@ -232,12 +253,10 @@
                       <a href="{{ route('visits.edit', $visit->id) }}" class="btn btn-outline-secondary" title="Edit">
                         <i class="fas fa-edit"></i>
                       </a>
-                      @if($visit->services && $visit->services->count() > 0)
-                        <a href="{{ route('service-results.patient-timeline', ['patient' => $visit->patient->id]) }}" 
-                           class="btn btn-outline-info" title="Service Results">
-                          <i class="fas fa-flask"></i>
-                        </a>
-                      @endif
+                      <a href="{{ route('service-results.patient-timeline', ['patient' => $visit->patient->id]) }}" 
+                         class="btn btn-outline-info" title="Service Results">
+                        <i class="fas fa-flask"></i>
+                      </a>
                       <button type="button" onclick="deleteVisit({{ $visit->id }})" class="btn btn-outline-danger" title="Delete">
                         <i class="fas fa-trash"></i>
                       </button>
