@@ -25,6 +25,7 @@ class Patient extends Model
         'email',
         'address',
         'occupation',
+        'height',
         'marital_status',
         'emergency_contact_name',
         'emergency_contact_phone',

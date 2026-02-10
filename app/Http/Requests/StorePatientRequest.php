@@ -28,20 +28,21 @@ class StorePatientRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'gender' => ['required', Rule::in(['male', 'female', 'other'])],
+            'gender' => ['required', Rule::in(['male', 'female'])],
             'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
             'age' => ['nullable', 'integer', 'min:0', 'max:120'],
-            'phone' => ['required', 'regex:/^0[0-9]{9}$/', Rule::unique('patients')->ignore($patientId)],
+            'phone' => ['nullable', 'string', 'max:20'], // Commented out regex validation - ['required', 'regex:/^0[0-9]{9}$/', Rule::unique('patients')->ignore($patientId)],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
             'occupation' => ['nullable', 'string', 'max:255'],
+            'height' => ['nullable', 'numeric', 'min:50', 'max:300'], // cm - reasonable human height range
             'marital_status' => ['nullable', Rule::in(['single', 'married', 'divorced', 'widowed'])],
             'blood_group' => ['nullable', Rule::in(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])],
             'sickle_cell_status' => ['nullable', Rule::in(['AA', 'AS', 'SS', 'Unknown'])],
             'allergies' => ['nullable', 'string', 'max:1000'],
             'chronic_conditions' => ['nullable', 'string', 'max:1000'],
             'emergency_contact_name' => ['nullable', 'string', 'max:255'],
-            'emergency_contact_phone' => ['nullable', 'regex:/^0[0-9]{9}$/'],
+            'emergency_contact_phone' => ['nullable', 'string', 'max:20'], // Commented out regex validation - ['nullable', 'regex:/^0[0-9]{9}$/'],
             'patient_photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
         ];
     }
@@ -49,8 +50,8 @@ class StorePatientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'phone.regex' => 'Please enter a valid Ghanaian phone number (e.g., 0201234567).',
-            'emergency_contact_phone.regex' => 'Please enter a valid emergency contact number (e.g., 0201234567).',
+            // 'phone.regex' => 'Please enter a valid Ghanaian phone number (e.g., 0201234567).', // Commented out - regex validation removed
+            // 'emergency_contact_phone.regex' => 'Please enter a valid emergency contact number (e.g., 0201234567).', // Commented out - regex validation removed
             'patient_photo.image' => 'The file must be an image.',
             'patient_photo.mimes' => 'The photo must be a JPEG, JPG, or PNG file.',
             'patient_photo.max' => 'The photo may not be larger than 2MB.',

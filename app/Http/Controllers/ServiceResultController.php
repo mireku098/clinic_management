@@ -22,11 +22,31 @@ class ServiceResultController extends Controller
     public function saveResult(Request $request)
     {
         try {
+            // VALIDATION: Exactly one of service_id or package_id must be present
+            $hasServiceId = $request->has('service_id') && $request->service_id != '';
+            $hasPackageId = $request->has('package_id') && $request->package_id != '';
+            
+            if ($hasServiceId && $hasPackageId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot specify both service_id and package_id. Choose one.',
+                    'errors' => ['service_or_package' => ['Specify either service or package, not both']]
+                ], 422);
+            }
+            
+            if (!$hasServiceId && !$hasPackageId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Must specify either service_id or package_id.',
+                    'errors' => ['service_or_package' => ['Service or package is required']]
+                ], 422);
+            }
+            
+            // Load patient and visit
             $patient = Patient::findOrFail($request->patient_id);
             $visit = \App\Models\PatientVisit::findOrFail($request->visit_id);
-            $service = Service::findOrFail($request->service_id);
             
-            // Verify the visit belongs to the patient
+            // Verify visit belongs to patient
             if ($visit->patient_id !== $patient->id) {
                 return response()->json([
                     'success' => false,
@@ -34,32 +54,80 @@ class ServiceResultController extends Controller
                 ], 403);
             }
             
-            // Check for existing result
-            $existingResult = ServiceResult::where('patient_id', $patient->id)
-                ->where('visit_id', $visit->id)
-                ->where('service_id', $service->id)
-                ->first();
-            
-            // Prevent editing approved results
-            if ($existingResult && $existingResult->status === 'approved') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Approved results cannot be edited'
-                ], 403);
+            // Handle service or package
+            if ($hasServiceId) {
+                $service = Service::findOrFail($request->service_id);
+                $serviceId = $service->id;
+                $packageId = null;
+                $resultType = $service->result_type;
+                
+                // Check for existing result
+                $existingResult = ServiceResult::where('patient_id', $patient->id)
+                    ->where('visit_id', $visit->id)
+                    ->where('service_id', $serviceId)
+                    ->first();
+                
+                // Prevent editing approved results
+                if ($existingResult && $existingResult->status === 'approved') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Approved results cannot be edited'
+                    ], 403);
+                }
+                
+                // Create patient_service record if needed
+                $patientService = \App\Models\PatientService::where('patient_id', $patient->id)
+                    ->where('visit_id', $visit->id)
+                    ->where('service_id', $serviceId)
+                    ->first();
+                
+                if (!$patientService) {
+                    $patientService = \App\Models\PatientService::create([
+                        'patient_id' => $patient->id,
+                        'visit_id' => $visit->id,
+                        'service_id' => $serviceId,
+                        'service_price' => $service->price ?? 0,
+                        'status' => 'completed',
+                    ]);
+                }
+                
+                $patientServiceId = $patientService->id;
+                
+            } else { // hasPackageId
+                $package = \App\Models\Package::findOrFail($request->package_id);
+                $serviceId = null;
+                $packageId = $package->id;
+                $resultType = 'text'; // Packages default to text
+                
+                // Check for existing result
+                $existingResult = ServiceResult::where('patient_id', $patient->id)
+                    ->where('visit_id', $visit->id)
+                    ->where('package_id', $packageId)
+                    ->first();
+                
+                // Prevent editing approved results
+                if ($existingResult && $existingResult->status === 'approved') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Approved results cannot be edited'
+                    ], 403);
+                }
+                
+                $patientServiceId = null;
             }
             
-            // Validate based on service result type
+            // Validate based on result type
             $rules = [
                 'status' => 'required|in:draft,pending_approval,approved,rejected',
                 'notes' => 'nullable|string|max:1000',
                 'recorded_at' => 'required|date',
             ];
             
-            if ($service->result_type === 'numeric') {
+            if ($resultType === 'numeric') {
                 $rules['result_numeric'] = 'required|numeric';
-            } elseif ($service->result_type === 'text') {
+            } elseif ($resultType === 'text') {
                 $rules['result_text'] = 'required|string|max:5000';
-            } elseif ($service->result_type === 'file') {
+            } elseif ($resultType === 'file') {
                 if (!$existingResult) {
                     $rules['result_file'] = 'required|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png';
                 }
@@ -67,47 +135,32 @@ class ServiceResultController extends Controller
             
             $request->validate($rules);
             
-            // Find or create the patient_service record
-            $patientService = \App\Models\PatientService::where('patient_id', $patient->id)
-                ->where('visit_id', $visit->id)
-                ->where('service_id', $service->id)
-                ->first();
-            
-            if (!$patientService) {
-                // Create patient_service record if it doesn't exist
-                $patientService = \App\Models\PatientService::create([
-                    'patient_id' => $patient->id,
-                    'visit_id' => $visit->id,
-                    'service_id' => $service->id,
-                    'service_price' => $service->price ?? 0,
-                    'status' => 'completed',
-                ]);
-            }
-            
+            // Prepare data array
             $data = [
                 'patient_id' => $patient->id,
                 'visit_id' => $visit->id,
-                'service_id' => $service->id,
-                'patient_service_id' => $patientService->id,
-                'result_type' => $service->result_type,
+                'service_id' => $serviceId,
+                'package_id' => $packageId,
+                'patient_service_id' => $patientServiceId,
+                'result_type' => $resultType,
                 'status' => $request->status,
                 'notes' => $request->notes,
                 'recorded_by' => auth()->id() ?? 1,
                 'recorded_at' => \Carbon\Carbon::parse($request->recorded_at),
             ];
             
-            // Handle result value based on service type - set other result fields to NULL
-            if ($service->result_type === 'text') {
+            // Handle result value based on result type
+            if ($resultType === 'text') {
                 $data['result_text'] = $request->result_text;
                 $data['result_numeric'] = null;
                 $data['result_file_path'] = null;
                 $data['result_file_name'] = null;
-            } elseif ($service->result_type === 'numeric') {
+            } elseif ($resultType === 'numeric') {
                 $data['result_numeric'] = $request->result_numeric;
                 $data['result_text'] = null;
                 $data['result_file_path'] = null;
                 $data['result_file_name'] = null;
-            } elseif ($service->result_type === 'file') {
+            } elseif ($resultType === 'file') {
                 if ($request->hasFile('result_file')) {
                     $file = $request->file('result_file');
                     if ($file->isValid()) {
@@ -159,59 +212,61 @@ class ServiceResultController extends Controller
 
     /**
      * Show dedicated Service Result page
-     */
-    public function patientServiceResults($patientId): View
-    {
         $patient = Patient::findOrFail($patientId);
-        
-        // Get all service results for this patient with relationships
-        $serviceResults = ServiceResult::with(['service', 'visit', 'recorder', 'approver'])
-            ->where('patient_id', $patientId)
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        // Get all visits for this patient to show available services
-        $visits = PatientVisit::with(['services.service'])
-            ->where('patient_id', $patientId)
-            ->orderBy('visit_date', 'desc')
-            ->get();
-        
-        // Get services that don't have results yet
-        $availableServices = [];
-        foreach ($visits as $visit) {
-            foreach ($visit->services as $patientService) {
-                if ($patientService->service) {
-                    $hasResult = $serviceResults->contains('service_id', $patientService->service_id);
-                    if (!$hasResult) {
-                        $availableServices[] = [
-                            'service' => $patientService->service,
-                            'visit' => $visit,
-                            'patient_service_id' => $patientService->id
-                        ];
-                    }
-                }
+        $visit = \App\Models\PatientVisit::findOrFail($visitId);
+        $service = Service::findOrFail($serviceId);
+            
+        // Verify the visit belongs to the patient
+        if ($visit->patient_id !== $patient->id) {
+            abort(404, 'Visit does not belong to this patient');
+        }
+            
+        // Ensure visit_date is a Carbon instance
+        if (is_string($visit->visit_date)) {
+            $visit->visit_date = \Carbon\Carbon::parse($visit->visit_date);
+        }
+            
+        // Check for existing result
+        $existingResult = ServiceResult::where('patient_id', $patient->id)
+            ->where('visit_id', $visit->id)
+            ->where('service_id', $service->id)
+            ->first();
+            
+        // Ensure result timestamps are Carbon instances
+        if ($existingResult) {
+            if (is_string($existingResult->recorded_at)) {
+                $existingResult->recorded_at = \Carbon\Carbon::parse($existingResult->recorded_at);
+            }
+            if (is_string($existingResult->created_at)) {
+                $existingResult->created_at = \Carbon\Carbon::parse($existingResult->created_at);
+            }
+            if (is_string($existingResult->updated_at)) {
+                $existingResult->updated_at = \Carbon\Carbon::parse($existingResult->updated_at);
             }
         }
-        
-        return view('service_results.patient_timeline', compact(
+            
+        // Get package information if applicable
+        $package = null;
+        if ($visit->package_id) {
+            $package = \App\Models\Package::find($visit->package_id);
+        }
+            
+        return view('service_results.form', compact(
             'patient', 
-            'serviceResults', 
-            'visits', 
-            'availableServices'
+            'visit', 
+            'service', 
+            'existingResult', 
+            'package'
         ));
-    }
-
-    /**
-     * Show dedicated Service Result page
      */
-    public function showResultPage($patientId, $visitId, $serviceId): View
+    public function showResultPage($patientId, $visitId, $serviceId)
     {
         try {
             $patient = Patient::findOrFail($patientId);
             $visit = \App\Models\PatientVisit::findOrFail($visitId);
             $service = Service::findOrFail($serviceId);
             
-            // Verify the visit belongs to the patient
+            // Verify visit belongs to patient
             if ($visit->patient_id !== $patient->id) {
                 abort(404, 'Visit does not belong to this patient');
             }
@@ -227,37 +282,98 @@ class ServiceResultController extends Controller
                 ->where('service_id', $service->id)
                 ->first();
             
-            // Ensure result timestamps are Carbon instances
+            // If result exists, redirect to edit
             if ($existingResult) {
-                if (is_string($existingResult->recorded_at)) {
-                    $existingResult->recorded_at = \Carbon\Carbon::parse($existingResult->recorded_at);
-                }
-                if (is_string($existingResult->created_at)) {
-                    $existingResult->created_at = \Carbon\Carbon::parse($existingResult->created_at);
-                }
-                if (is_string($existingResult->updated_at)) {
-                    $existingResult->updated_at = \Carbon\Carbon::parse($existingResult->updated_at);
-                }
+                return redirect()->route('service-results.edit', $existingResult->id);
             }
             
-            // Get package information if applicable
-            $package = null;
-            if ($visit->package_id) {
-                $package = \App\Models\Package::find($visit->package_id);
-            }
-            
-            return view('service_results.form', compact(
-                'patient', 
-                'visit', 
-                'service', 
-                'existingResult', 
-                'package'
-            ));
+            // If no result exists, redirect to create with pre-filled parameters
+            return redirect()->route('service-results.create', [
+                'patient_id' => $patient->id,
+                'service_id' => $service->id,
+                'visit_id' => $visit->id
+            ]);
             
         } catch (\Exception $e) {
             \Log::error('Error loading service result page: ' . $e->getMessage());
             abort(404, 'Service Result page not found');
         }
+    }
+
+    /**
+     * Show patient service results timeline
+     */
+    public function patientServiceResults($patientId): View
+    {
+        $patient = Patient::findOrFail($patientId);
+        
+        // Get all service results for this patient with relationships (including packages)
+        $serviceResults = ServiceResult::with(['service', 'package', 'patientPackage', 'visit', 'recorder', 'approver'])
+            ->where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Get all visits for this patient to show available services and packages
+        $visits = PatientVisit::with(['services.service', 'package'])
+            ->where('patient_id', $patientId)
+            ->orderBy('visit_date', 'desc')
+            ->get();
+        
+        // Get services and packages that don't have results yet
+        $availableServices = [];
+        $mostRecentVisit = $visits->first(); // Get most recent visit
+        
+        if ($mostRecentVisit) {
+            // Get existing results for this specific visit
+            $visitResults = $serviceResults->where('visit_id', $mostRecentVisit->id);
+            
+            // Check for services from JSON column (selected_services)
+            if ($mostRecentVisit->selected_services) {
+                $selectedServices = json_decode($mostRecentVisit->selected_services, true);
+                if ($selectedServices) {
+                    foreach ($selectedServices as $serviceData) {
+                        $serviceId = $serviceData['id'];
+                        $hasResult = $visitResults->contains('service_id', $serviceId);
+                        if (!$hasResult) {
+                            $service = \App\Models\Service::find($serviceId);
+                            if ($service) {
+                                $availableServices[] = [
+                                    'service' => $service,
+                                    'visit' => $mostRecentVisit,
+                                    'service_data' => $serviceData
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Check for package from JSON column (selected_package)
+            if ($mostRecentVisit->selected_package) {
+                $selectedPackage = json_decode($mostRecentVisit->selected_package, true);
+                if ($selectedPackage) {
+                    $packageId = $selectedPackage['id'];
+                    $hasPackageResult = $visitResults->contains('package_id', $packageId);
+                    if (!$hasPackageResult) {
+                        $package = \App\Models\Package::find($packageId);
+                        if ($package) {
+                            $availableServices[] = [
+                                'package' => $package,
+                                'visit' => $mostRecentVisit,
+                                'package_data' => $selectedPackage
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return view('service_results.patient_timeline', compact(
+            'patient', 
+            'serviceResults', 
+            'visits', 
+            'availableServices'
+        ));
     }
 
     /**
@@ -399,7 +515,7 @@ class ServiceResultController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ServiceResult::with(['service', 'patient', 'visit', 'recorder', 'approver']);
+        $query = ServiceResult::with(['service', 'patient', 'visit', 'recorder', 'approver', 'package', 'patientPackage']);
         
         // Filter by patient
         if ($request->filled('patient_id')) {
@@ -409,6 +525,11 @@ class ServiceResultController extends Controller
         // Filter by service
         if ($request->filled('service_id')) {
             $query->where('service_id', $request->service_id);
+        }
+        
+        // Filter by package
+        if ($request->filled('package_id')) {
+            $query->where('package_id', $request->package_id);
         }
         
         // Filter by status
@@ -427,7 +548,7 @@ class ServiceResultController extends Controller
         if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
             return response()->json([
                 'html' => view('service-results.partials.results-grid', compact('results'))->render(),
-                'pagination' => $results->links()->toHtml(),
+                'pagination' => method_exists($results, 'links') ? $results->links()->toHtml() : '',
                 'count' => $results->total()
             ]);
         }
@@ -443,11 +564,28 @@ class ServiceResultController extends Controller
     public function create(Request $request)
     {
         $services = Service::where('status', 'active')->get();
+        
+        // If we have a specific service_id, make sure it's included even if not active
+        if ($request->filled('service_id')) {
+            $specificService = Service::find($request->service_id);
+            if ($specificService && !$services->contains('id', $specificService->id)) {
+                $services->push($specificService);
+            }
+        }
+        
         $patients = Patient::all();
         $visits = [];
         
         if ($request->filled('patient_id')) {
             $visits = PatientVisit::where('patient_id', $request->patient_id)->latest()->get();
+            
+            // If we also have a specific visit_id, make sure it's included
+            if ($request->filled('visit_id')) {
+                $specificVisit = PatientVisit::find($request->visit_id);
+                if ($specificVisit && !$visits->contains('id', $specificVisit->id)) {
+                    $visits->push($specificVisit);
+                }
+            }
         }
         
         return view('service-results.create', compact('services', 'patients', 'visits'));

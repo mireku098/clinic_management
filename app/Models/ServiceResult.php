@@ -16,6 +16,8 @@ class ServiceResult extends Model
         'patient_id',
         'visit_id',
         'patient_service_id',
+        'package_id',
+        'patient_package_id',
         'result_type',
         'result_text',
         'result_numeric',
@@ -59,6 +61,16 @@ class ServiceResult extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
+    }
+
+    public function patientPackage()
+    {
+        return $this->belongsTo(PatientPackage::class);
     }
 
     public function isEditable()

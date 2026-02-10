@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\PatientVisit;
 use App\Models\Patient;
+use App\Models\PatientService;
 use App\Models\Package;
 use App\Models\Service;
-use App\Models\PatientService;
+use App\Services\BillingService;
 use App\Http\Requests\StoreVisitRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,7 @@ class VisitController extends Controller
     {
         \Log::info('VisitController index method called');
         
-        $query = PatientVisit::with(['patient', 'attendingUser', 'services.service']);
+        $query = PatientVisit::with(['patient', 'attendingUser', 'services.service', 'package']);
         
         // Search by patient name or code
         if (request()->filled('patient_search')) {
@@ -113,21 +114,100 @@ class VisitController extends Controller
         return view('visits.add', compact('patient', 'packages', 'services'));
     }
 
+    public function store(StoreVisitRequest $request)
+    {
+        // Check if this is an AJAX request
+        $isAjax = $request->ajax() || $request->wantsJson();
+        
+        try {
+            $data = $request->validated();
+            
+            // Auto-calculate BMI if weight and height provided
+            if (isset($data['weight']) && isset($data['height']) && $data['weight'] && $data['height']) {
+                $heightInMeters = $data['height'] / 100;
+                $data['bmi'] = round($data['weight'] / ($heightInMeters * $heightInMeters), 1);
+            }
+            
+            // Create the visit
+            $visit = PatientVisit::create($data);
+            
+            // Handle package and service data separately (stored in patient_visits columns)
+            $selectedPackage = $request->input('selected_package');
+            $selectedServices = $request->input('selected_services');
+            $totalAmount = $request->input('total_amount', 0);
+            
+            // Update visit with package and service data
+            $visit->update([
+                'total_amount' => $totalAmount,
+                'selected_services' => $selectedServices,
+                'selected_package' => $selectedPackage,
+                'balance_due' => $totalAmount, // Initially, balance equals total amount
+                'payment_status' => 'pending'
+            ]);
+            
+            // Handle package_id if package selected
+            if ($selectedPackage) {
+                $packageData = json_decode($selectedPackage, true);
+                if ($packageData && isset($packageData['id'])) {
+                    $visit->update(['package_id' => $packageData['id']]);
+                }
+            }
+            
+            // Auto-create bill for this visit
+            try {
+                BillingService::createOrUpdateBillForVisit($visit);
+                \Log::info("Bill created for visit {$visit->id}");
+            } catch (\Exception $e) {
+                \Log::error("Failed to create bill for visit {$visit->id}: " . $e->getMessage());
+                // Continue with visit creation even if bill creation fails
+            }
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Visit created successfully!',
+                    'visit_id' => $visit->id
+                ]);
+            }
+            
+            return redirect()->route('visits')
+                ->with('success', 'Visit created successfully!');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error creating visit: ' . $e->getMessage());
+            
+            if ($isAjax) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error creating visit: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Error creating visit: ' . $e->getMessage());
+        }
+    }
+
     public function edit($id): View
     {
         try {
             \Log::info('Edit method called with ID: ' . $id);
             
-            $visit = PatientVisit::with(['patient', 'attendingUser', 'services', 'package'])->findOrFail($id);
-            $patient = $visit->patient;
+            // Load visit with only essential relationships for form display
+            $visit = PatientVisit::with(['patient'])->findOrFail($id);
             \Log::info('Visit found: ' . $visit->id);
             
-            // Load packages and services for the form
+            // Load packages and services for form dropdowns
             $packages = Package::where('status', 'active')->get();
             $services = Service::all();
             
+            // Pre-populate selected services and package data from patient_visits columns
+            $selectedServices = $visit->selected_services ? json_decode($visit->selected_services, true) : [];
+            $selectedPackage = $visit->selected_package ? json_decode($visit->selected_package, true) : null;
+            
             \Log::info('About to return edit view');
-            return view('visits.edit', compact('visit', 'patient', 'packages', 'services'));
+            return view('visits.edit', compact('visit', 'packages', 'services', 'selectedServices', 'selectedPackage'));
             
         } catch (\Exception $e) {
             \Log::error('Error in edit method: ' . $e->getMessage());
@@ -151,9 +231,10 @@ class VisitController extends Controller
                 $data['bmi'] = round($data['weight'] / ($heightInMeters * $heightInMeters), 1);
             }
             
+            // Update only the patient_visits record
             $visit->update($data);
             
-            // Handle package and service data
+            // Handle package and service data separately (stored in patient_visits columns)
             $selectedPackage = $request->input('selected_package');
             $selectedServices = $request->input('selected_services');
             $totalAmount = $request->input('total_amount', 0);
@@ -164,290 +245,87 @@ class VisitController extends Controller
                 'selected_services' => $selectedServices,
                 'selected_package' => $selectedPackage,
                 'balance_due' => $totalAmount, // Initially, balance equals total amount
+                'payment_status' => 'pending'
             ]);
             
-            // If package is selected, update package_id and create patient package record
+            // Handle package_id if package selected
             if ($selectedPackage) {
                 $packageData = json_decode($selectedPackage, true);
                 if ($packageData && isset($packageData['id'])) {
                     $visit->update(['package_id' => $packageData['id']]);
-                    
-                    // Delete existing patient package records for this visit
-                    \App\Models\PatientPackage::where('visit_id', $visit->id)->delete();
-                    
-                    // Create new patient package record
-                    \App\Models\PatientPackage::create([
-                        'patient_id' => $visit->patient_id,
-                        'package_id' => $packageData['id'],
-                        'visit_id' => $visit->id,
-                        'start_date' => now(),
-                        'status' => 'active',
-                        'created_at' => now()
-                    ]);
-                    
-                    // Delete existing patient services for this visit (package services)
-                    PatientService::where('visit_id', $visit->id)->delete();
-                    
-                    // Add package services to patient services
-                    $package = Package::find($packageData['id']);
-                    if ($package) {
-                        foreach ($package->services as $packageService) {
-                            PatientService::create([
-                                'patient_id' => $visit->patient_id,
-                                'visit_id' => $visit->id,
-                                'service_id' => $packageService->service_id,
-                                'service_price' => $packageService->service->price ?? 0,
-                                'status' => 'pending',
-                            ]);
-                        }
-                    }
                 }
+            } else {
+                $visit->update(['package_id' => null]);
             }
             
-            // If individual services are selected, create patient service records
-            if ($selectedServices) {
-                $servicesData = json_decode($selectedServices, true);
-                if ($servicesData && is_array($servicesData)) {
-                    // Delete existing individual services (keep package services if any)
-                    PatientService::where('visit_id', $visit->id)->delete();
-                    
-                    foreach ($servicesData as $serviceData) {
-                        if (isset($serviceData['id'])) {
-                            PatientService::create([
-                                'patient_id' => $visit->patient_id,
-                                'visit_id' => $visit->id,
-                                'service_id' => $serviceData['id'],
-                                'service_price' => $serviceData['price'] ?? 0,
-                                'status' => 'pending',
-                            ]);
-                        }
-                    }
-                }
+            // Auto-create bill for this visit (but don't override existing data)
+            try {
+                BillingService::createOrUpdateBillForVisit($visit);
+                \Log::info("Bill created/updated for visit {$visit->id}");
+            } catch (\Exception $e) {
+                \Log::error("Failed to create bill for visit {$visit->id}: " . $e->getMessage());
+                // Continue with visit update even if bill creation fails
             }
             
-            // Return JSON response for AJAX requests
             if ($isAjax) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Visit updated successfully',
+                    'message' => 'Visit updated successfully!',
                     'visit_id' => $visit->id
                 ]);
             }
             
-            return redirect()
-                ->route('visits')
-                ->with('swal', [
-                    'icon' => 'success',
-                    'title' => 'Visit Updated',
-                    'text' => 'Patient visit has been updated successfully.',
-                ]);
+            return redirect()->route('visits')
+                ->with('success', 'Visit updated successfully!');
                 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Let validation exceptions pass through to show proper errors
-            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error updating visit: ' . $e->getMessage());
             
-        } catch (\Throwable $exception) {
-            \Log::error('Visit update failed: ' . $exception->getMessage());
-            
-            // Return JSON response for AJAX requests
             if ($isAjax) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'An error occurred while updating the visit: ' . $exception->getMessage()
+                    'message' => 'Error updating visit: ' . $e->getMessage()
                 ], 500);
             }
             
-            return back()
+            return redirect()->back()
                 ->withInput()
-                ->with('swal', [
-                    'icon' => 'error',
-                    'title' => 'Unable to Update Visit',
-                    'text' => 'An error occurred while updating the visit: ' . $exception->getMessage(),
-                    'showConfirmButton' => true,
-                ]);
+                ->with('error', 'Error updating visit: ' . $e->getMessage());
         }
     }
 
-    public function destroy($id)
+    public function destroy($id): RedirectResponse
     {
-        $visit = PatientVisit::findOrFail($id);
-        
-        // Check if this is an AJAX request
-        $isAjax = request()->ajax() || request()->wantsJson();
-        
         try {
-            // Use soft delete - this will set deleted_at timestamp instead of actually deleting
-            $visit->delete();
+            $visit = PatientVisit::findOrFail($id);
             
-            if ($isAjax) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Visit deleted successfully!'
-                ], 200);
-            }
+            // Delete related patient services
+            PatientService::where('visit_id', $id)->delete();
+            
+            // Delete related patient packages
+            \App\Models\PatientPackage::where('visit_id', $id)->delete();
+            
+            // Delete the visit
+            $visit->delete();
             
             return redirect()
                 ->route('visits')
                 ->with('swal', [
                     'icon' => 'success',
                     'title' => 'Visit Deleted',
-                    'text' => 'Patient visit has been deleted successfully.',
-                ]);
-                
-        } catch (\Throwable $exception) {
-            \Log::error('Visit deletion failed: ' . $exception->getMessage());
-            \Log::error('Visit deletion stack trace: ' . $exception->getTraceAsString());
-            
-            if ($isAjax) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'An error occurred while deleting the visit: ' . $exception->getMessage(),
-                    'errors' => []
-                ], 500);
-            }
-            
-            return back()
-                ->with('swal', [
-                    'icon' => 'error',
-                    'title' => 'Unable to Delete Visit',
-                    'text' => 'An error occurred while deleting the visit: ' . $exception->getMessage(),
+                    'text' => 'Visit record has been deleted successfully.',
                     'showConfirmButton' => true,
                 ]);
-        }
-    }
-
-    public function store(StoreVisitRequest $request)
-    {
-        // Check if this is an AJAX request
-        $isAjax = $request->ajax() || $request->wantsJson();
-        
-        try {
-            $data = $request->validated();
-            
-            // Add created_at timestamp
-            $data['created_at'] = now();
-            
-            // Set attended_by to current authenticated user
-            if (auth()->check()) {
-                $data['attended_by'] = auth()->id();
-            } else {
-                $data['attended_by'] = null;
-            }
-            
-            // Auto-calculate BMI if weight and height provided
-            if (isset($data['weight']) && isset($data['height']) && $data['weight'] && $data['height']) {
-                $heightInMeters = $data['height'] / 100;
-                $data['bmi'] = round($data['weight'] / ($heightInMeters * $heightInMeters), 1);
-            }
-            
-            $visit = PatientVisit::create($data);
-            
-            // Handle package and service data
-            $selectedPackage = $request->input('selected_package');
-            $selectedServices = $request->input('selected_services');
-            $totalAmount = $request->input('total_amount', 0);
-            
-            // Update visit with package and service data
-            $visit->update([
-                'total_amount' => $totalAmount,
-                'selected_services' => $selectedServices,
-                'selected_package' => $selectedPackage,
-                'balance_due' => $totalAmount, // Initially, balance equals total amount
-            ]);
-            
-            // If package is selected, update package_id and create patient package record
-            if ($selectedPackage) {
-                $packageData = json_decode($selectedPackage, true);
-                if ($packageData && isset($packageData['id'])) {
-                    $visit->update(['package_id' => $packageData['id']]);
-                    
-                    // Create patient package record
-                    \App\Models\PatientPackage::create([
-                        'patient_id' => $visit->patient_id,
-                        'package_id' => $packageData['id'],
-                        'visit_id' => $visit->id,
-                        'start_date' => now(),
-                        'status' => 'active',
-                        'created_at' => now()
-                    ]);
-                    
-                    // Add package services to patient services
-                    $package = Package::find($packageData['id']);
-                    if ($package) {
-                        foreach ($package->services as $packageService) {
-                            PatientService::create([
-                                'patient_id' => $visit->patient_id,
-                                'visit_id' => $visit->id,
-                                'service_id' => $packageService->service_id,
-                                'service_price' => $packageService->service->price ?? 0,
-                                'status' => 'pending',
-                            ]);
-                        }
-                    }
-                }
-            }
-            
-            // If individual services are selected, create patient service records
-            if ($selectedServices) {
-                $servicesData = json_decode($selectedServices, true);
-                if ($servicesData && is_array($servicesData)) {
-                    foreach ($servicesData as $serviceData) {
-                        if (isset($serviceData['id'])) {
-                            PatientService::create([
-                                'patient_id' => $visit->patient_id,
-                                'visit_id' => $visit->id,
-                                'service_id' => $serviceData['id'],
-                                'service_price' => $serviceData['price'] ?? 0,
-                                'status' => 'pending',
-                            ]);
-                        }
-                    }
-                }
-            }
-            
-            if ($isAjax) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Visit recorded successfully!',
-                    'data' => $visit->toArray()
-                ], 200);
-            }
+                
+        } catch (\Exception $e) {
+            \Log::error("Error deleting visit {$id}: " . $e->getMessage());
             
             return redirect()
                 ->route('visits')
                 ->with('swal', [
-                    'icon' => 'success',
-                    'title' => 'Visit Recorded',
-                    'text' => 'Patient visit has been recorded successfully.',
-                ]);
-                
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($isAjax) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'The given data was invalid.',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            throw $e;
-            
-        } catch (\Throwable $exception) {
-            \Log::error('Visit creation failed: ' . $exception->getMessage());
-            
-            if ($isAjax) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unable to record visit. Please try again.',
-                    'error' => $exception->getMessage()
-                ], 500);
-            }
-            
-            return back()
-                ->withInput()
-                ->with('swal', [
                     'icon' => 'error',
-                    'title' => 'Unable to Record Visit',
-                    'text' => 'An error occurred while recording the visit. Please try again.',
+                    'title' => 'Delete Failed',
+                    'text' => 'Failed to delete visit: ' . $e->getMessage(),
                     'showConfirmButton' => true,
                 ]);
         }

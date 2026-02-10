@@ -19,7 +19,20 @@
             </span>
           </div>
           
-          <h6 class="card-title">{{ $result->service->service_name }}</h6>
+          <!-- Service/Package Name -->
+          <h6 class="card-title">
+            @if($result->package)
+              <span class="badge bg-primary me-2">
+                <i class="fas fa-box me-1"></i>Package
+              </span>
+              {{ $result->package->package_name }}
+            @elseif($result->service)
+              {{ $result->service->service_name }}
+            @else
+              Unknown Service/Package
+            @endif
+          </h6>
+          
           <p class="card-text text-muted small mb-2">
             <i class="fas fa-user me-1"></i> {{ $result->patient->first_name }} {{ $result->patient->last_name }}
             @if ($result->visit)

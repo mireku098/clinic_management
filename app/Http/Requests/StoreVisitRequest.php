@@ -34,15 +34,15 @@ class StoreVisitRequest extends FormRequest
             'chief_complaint' => ['nullable', 'string', 'max:500'],
             
             // Vital signs (optional - no range constraints to allow abnormal readings)
-            'blood_pressure' => ['nullable', 'string'],
+            'blood_pressure' => ['nullable', 'regex:/^\d{2,3}\/\d{2,3}$/'], // Format: 120/80
             'temperature' => ['nullable', 'numeric'], // °C - no range limits
             'weight' => ['nullable', 'numeric'], // kg - no range limits
-            'height' => ['nullable', 'numeric'], // cm - allow decimal
+            // 'height' => ['nullable', 'numeric'], // cm - removed - now using patient's permanent height
             'heart_rate' => ['nullable', 'integer'], // bpm - no range limits
             'oxygen_saturation' => ['nullable', 'integer'], // % - no range limits
             'respiratory_rate' => ['nullable', 'integer'], // breaths per minute - no range limits
             'pulse_rate' => ['nullable', 'integer'], // bpm - no range limits
-            'bmi' => ['nullable', 'numeric'], // calculated - no range limits
+            'bmi' => ['nullable', 'numeric', 'min:0', 'max:999.99'], // calculated - limited to database range
             
             // Clinical notes (optional)
             'reason_for_visit' => ['nullable', 'string', 'max:1000'],
@@ -64,6 +64,7 @@ class StoreVisitRequest extends FormRequest
             'visit_time.date_format' => 'Please enter a valid time (HH:MM).',
             'visit_type.required' => 'Please select visit type.',
             'practitioner.required' => 'Please select a practitioner.',
+            'blood_pressure.regex' => 'Please enter blood pressure in the format 120/80 (systolic/diastolic).',
         ];
     }
 }

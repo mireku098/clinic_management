@@ -47,6 +47,19 @@ class PatientVisit extends Model
         'balance_due',
     ];
 
+    protected $casts = [
+        'visit_date' => 'date',
+        'visit_time' => 'datetime',
+        'temperature' => 'decimal:2',
+        'weight' => 'decimal:2',
+        'height' => 'decimal:2',
+        'bmi' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'balance_due' => 'decimal:2',
+        'created_at' => 'datetime',
+    ];
+
     public function patient()
     {
         return $this->belongsTo(Patient::class, 'patient_id');
@@ -65,5 +78,10 @@ class PatientVisit extends Model
     public function package()
     {
         return $this->belongsTo(Package::class, 'package_id');
+    }
+
+    public function bill()
+    {
+        return $this->hasOne(Bill::class, 'visit_id');
     }
 }

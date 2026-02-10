@@ -23,6 +23,14 @@ class Payment extends Model
         'payment_time',
     ];
 
+    protected $casts = [
+        'amount_before' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'balance_after' => 'decimal:2',
+        'payment_date' => 'date',
+        'payment_time' => 'datetime',
+    ];
+
     public function bill()
     {
         return $this->belongsTo(Bill::class);
@@ -30,6 +38,6 @@ class Payment extends Model
 
     public function staff()
     {
-        return $this->belongsTo(User::class, 'received_by');
+        return $this->belongsTo(User::class, 'received_by', 'id');
     }
 }

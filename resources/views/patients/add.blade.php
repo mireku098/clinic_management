@@ -44,7 +44,6 @@
                                     <option value="">Select Gender</option>
                                     <option value="male" @selected(old('gender') === 'male')>Male</option>
                                     <option value="female" @selected(old('gender') === 'female')>Female</option>
-                                    <option value="other" @selected(old('gender') === 'other')>Other</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -56,8 +55,8 @@
                                 <input type="number" class="form-control" id="age" name="age" readonly />
                             </div>
                             <div class="col-md-6">
-                                <label for="phone" class="form-label">Phone Number *</label>
-                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="02012345678" value="{{ old('phone') }}" required />
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="Any phone number format" value="{{ old('phone') }}" />
                             </div>
                             <div class="col-md-6">
                                 <label for="email" class="form-label">Email Address</label>
@@ -72,6 +71,11 @@
                                 <input type="text" class="form-control" id="occupation" name="occupation" value="{{ old('occupation') }}" />
                             </div>
                             <div class="col-md-6">
+                                <label for="height" class="form-label">Height (cm)</label>
+                                <input type="number" step="0.1" class="form-control" id="height" name="height" placeholder="175.5" value="{{ old('height') }}" />
+                                <small class="text-muted">Patient's height in centimeters</small>
+                            </div>
+                            <div class="col-md-6">
                                 <label for="marital_status" class="form-label">Marital Status</label>
                                 <select class="form-select" id="marital_status" name="marital_status">
                                     <option value="">Select Status</option>
@@ -80,6 +84,28 @@
                                     <option value="divorced" @selected(old('marital_status') === 'divorced')>Divorced</option>
                                     <option value="widowed" @selected(old('marital_status') === 'widowed')>Widowed</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Photo -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-camera me-2"></i>Patient Photo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <div class="patient-avatar mx-auto mb-3" style="width: 120px; height: 120px; border: 2px dashed #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-user" style="font-size: 3rem; color: #6c757d;"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <label for="patient_photo" class="form-label">Upload Patient Photo</label>
+                                <input type="file" class="form-control" id="patient_photo" name="patient_photo" accept="image/jpeg,image/jpg,image/png" onchange="document.getElementById('selected_file_name').textContent = this.files[0]?.name || ''" />
+                                <small class="d-block text-muted mt-2" id="selected_file_name">Upload patient photo (JPG/PNG, max 2MB)</small>
+                                <small class="d-block text-muted">Optional: Upload a clear photo of the patient for identification purposes</small>
                             </div>
                         </div>
                     </div>
@@ -167,25 +193,6 @@
 
         <!-- Sidebar -->
         <div class="col-lg-4">
-            <!-- Patient Photo -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5><i class="fas fa-camera me-2"></i>Patient Photo</h5>
-                </div>
-                <div class="card-body text-center">
-                    <div class="patient-avatar mx-auto mb-3" style="width: 120px; height: 120px">
-                        <i class="fas fa-user" style="font-size: 3rem"></i>
-                    </div>
-                    <input type="file" class="form-control" id="patient_photo" name="patient_photo" accept="image/jpeg,image/jpg,image/png" style="display: none" onchange="document.getElementById('selected_file_name').textContent = this.files[0]?.name || ''" />
-                    <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('patient_photo').click()">
-                        <i class="fas fa-upload me-2"></i>
-                        Upload Photo
-                    </button>
-                    <small class="d-block text-muted mt-2" id="selected_file_name">Upload patient photo (JPG/PNG, max 2MB)</small>
-                    <small class="d-block text-muted mt-2">Optional: Upload patient photo</small>
-                </div>
-            </div>
-
             <!-- Quick Stats -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -323,26 +330,40 @@
     }
 
     function validatePhone(field) {
+        // Commented out phone validation - allowing any phone format
         const value = field.value.trim();
         const feedbackElement = field.parentNode.querySelector(".invalid-feedback, .valid-feedback");
         if (feedbackElement) {
             feedbackElement.remove();
         }
-        const phoneRegex = /^0[0-9]{9}$/;
-        if (value !== "" && !phoneRegex.test(value)) {
-            field.classList.remove("is-valid");
-            field.classList.add("is-invalid");
-            const feedback = document.createElement("div");
-            feedback.className = "invalid-feedback";
-            feedback.textContent = "Please enter a valid Ghanaian phone number (e.g., 0201234567)";
-            field.parentNode.appendChild(feedback);
-        } else if (value !== "") {
+        
+        // const phoneRegex = /^0[0-9]{9}$/; // Commented out - no longer enforcing Ghanaian format
+        // if (value !== "" && !phoneRegex.test(value)) { // Commented out - no format restriction
+        //     field.classList.remove("is-valid");
+        //     field.classList.add("is-invalid");
+        //     const feedback = document.createElement("div");
+        //     feedback.className = "invalid-feedback";
+        //     feedback.textContent = "Please enter a valid Ghanaian phone number (e.g., 0201234567)";
+        //     field.parentNode.appendChild(feedback);
+        // } else if (value !== "") { // Commented out - always valid if not empty
+        //     field.classList.remove("is-invalid");
+        //     field.classList.add("is-valid");
+        //     const feedback = document.createElement("div");
+        //     feedback.className = "valid-feedback";
+        //     feedback.textContent = "Valid phone number";
+        //     field.parentNode.appendChild(feedback);
+        // }
+        
+        // New simplified validation - just check if it's not empty (optional field)
+        if (value !== "") {
             field.classList.remove("is-invalid");
             field.classList.add("is-valid");
             const feedback = document.createElement("div");
             feedback.className = "valid-feedback";
-            feedback.textContent = "Valid phone number";
+            feedback.textContent = "Phone number accepted";
             field.parentNode.appendChild(feedback);
+        } else {
+            field.classList.remove("is-invalid", "is-valid");
         }
     }
 

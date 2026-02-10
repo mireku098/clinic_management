@@ -26,7 +26,7 @@
                     <i class="fas fa-box"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>6</h3>
+                    <h3>{{ isset($packages) ? $packages->count() : 0 }}</h3>
                     <p>Total Packages</p>
                 </div>
             </div>
@@ -37,8 +37,8 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>145</h3>
-                    <p>Active Subscriptions</p>
+                    <h3>{{ isset($packages) ? $packages->where('status', 'active')->count() : 0 }}</h3>
+                    <p>Active Packages</p>
                 </div>
             </div>
         </div>
@@ -48,19 +48,19 @@
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>4</h3>
-                    <p>Active Packages</p>
+                    <h3>{{ isset($packages) ? $packages->where('status', 'inactive')->count() : 0 }}</h3>
+                    <p>Inactive Packages</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stat-card">
                 <div class="stat-icon bg-warning">
-                    <i class="fas fa-pause-circle"></i>
+                    <i class="fas fa-clock"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>2</h3>
-                    <p>Inactive Packages</p>
+                    <h3>{{ isset($packages) ? $packages->sum('duration_weeks') : 0 }}</h3>
+                    <p>Total Weeks</p>
                 </div>
             </div>
         </div>
@@ -92,351 +92,87 @@
 
     <!-- Packages Grid -->
     <div class="row" id="packagesContainer">
-        <!-- Basic Physiotherapy Package -->
-        <div class="col-md-6 col-lg-4 mb-4 package-card">
-            <div class="card h-100 package-item" data-package="basic-physiotherapy" data-status="active">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Basic Physiotherapy</h5>
-                            <p class="text-muted small mb-0">4-week program</p>
-                        </div>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-
-                    <div class="price-section mb-3">
-                        <h3 class="text-primary mb-0">GH₵15,000</h3>
-                        <small class="text-muted">4 weeks program</small>
-                    </div>
-
-                    <div class="features mb-3">
-                        <h6 class="mb-2">Includes:</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="fas fa-check text-success me-2"></i>Twice weekly sessions</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Initial assessment</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Progress tracking</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Home exercise plan</li>
-                        </ul>
-                    </div>
-
-                    <div class="text-center mb-3">
-                        <small class="text-muted">Active Subscriptions: <strong>32</strong></small>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPackageModal">
-                            <i class="fas fa-edit me-2"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-times me-2"></i>
-                            Deactivate
-                        </button>
-                    </div>
+        @if(!isset($packages))
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No packages found. <a href="{{ route('packages.add') }}" class="alert-link">Create your first package</a>.
                 </div>
             </div>
-        </div>
+        @else
+            @foreach($packages as $package)
+                <div class="col-md-6 col-lg-4 mb-4 package-card" data-package="{{ $package->package_code }}" data-status="{{ $package->status }}">
+                    <div class="card h-100 package-item">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">{{ $package->package_name }}</h5>
+                                    <p class="text-muted small mb-0">{{ $package->duration_weeks }}-week program</p>
+                                </div>
+                                <span class="badge bg-{{ $package->status === 'active' ? 'success' : 'secondary' }}">
+                                    {{ ucfirst($package->status) }}
+                                </span>
+                            </div>
 
-        <!-- Comprehensive Wellness Package -->
-        <div class="col-md-6 col-lg-4 mb-4 package-card">
-            <div class="card h-100 package-item" data-package="comprehensive-wellness" data-status="active">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Comprehensive Wellness</h5>
-                            <p class="text-muted small mb-0">8-week program</p>
-                        </div>
-                        <span class="badge bg-success">Active</span>
-                    </div>
+                            <div class="price-section mb-3">
+                                <h3 class="text-primary mb-0">GH₵{{ number_format($package->total_cost, 2) }}</h3>
+                                <small class="text-muted">{{ $package->duration_weeks }} weeks program</small>
+                            </div>
 
-                    <div class="price-section mb-3">
-                        <h3 class="text-primary mb-0">GH₵25,000</h3>
-                        <small class="text-muted">8 weeks program</small>
-                    </div>
+                            @if($package->description)
+                                <div class="description mb-3">
+                                    <p class="small text-muted">{{ Str::limit($package->description, 100) }}</p>
+                                </div>
+                            @endif
 
-                    <div class="features mb-3">
-                        <h6 class="mb-2">Includes:</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="fas fa-check text-success me-2"></i>Thrice weekly sessions</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Nutritional counseling</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Fitness assessment</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Wellness plan</li>
-                        </ul>
-                    </div>
+                            <div class="features mb-3">
+                                <h6 class="mb-2">Includes:</h6>
+                                <ul class="list-unstyled small">
+                                    @if(isset($package->services) && $package->services->count() > 0)
+                                        @foreach($package->services as $service)
+                                            <li>
+                                                <i class="fas fa-check text-success me-2"></i>
+                                                @if(isset($service->service) && $service->service)
+                                                    {{ $service->service->service_name }}
+                                                @else
+                                                    Service #{{ $service->service_id }}
+                                                @endif
+                                                @if($service->frequency_type && $service->frequency_value)
+                                                    @if($service->frequency_type === 'once')
+                                                        (One-time)
+                                                    @elseif($service->frequency_type === 'per_week')
+                                                        ({{ $service->frequency_value }}x per week)
+                                                    @elseif($service->frequency_type === 'per_month')
+                                                        ({{ $service->frequency_value }}x per month)
+                                                    @endif
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    @else
+                                        <li><i class="fas fa-info-circle text-info me-2"></i>No services added yet</li>
+                                    @endif
+                                </ul>
+                            </div>
 
-                    <div class="text-center mb-3">
-                        <small class="text-muted">Active Subscriptions: <strong>28</strong></small>
-                    </div>
+                            <div class="text-center mb-3">
+                                <small class="text-muted">Services: <strong>{{ isset($package->services) ? $package->services->count() : 0 }}</strong></small>
+                            </div>
 
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPackageModal">
-                            <i class="fas fa-edit me-2"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-times me-2"></i>
-                            Deactivate
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Female Health Package -->
-        <div class="col-md-6 col-lg-4 mb-4 package-card">
-            <div class="card h-100 package-item" data-package="female-health" data-status="active">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Female Health</h5>
-                            <p class="text-muted small mb-0">6-week program</p>
-                        </div>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-
-                    <div class="price-section mb-3">
-                        <h3 class="text-primary mb-0">GH₵20,000</h3>
-                        <small class="text-muted">6 weeks program</small>
-                    </div>
-
-                    <div class="features mb-3">
-                        <h6 class="mb-2">Includes:</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="fas fa-check text-success me-2"></i>Specialized assessment</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Pelvic floor therapy</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Wellness sessions</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Follow-up support</li>
-                        </ul>
-                    </div>
-
-                    <div class="text-center mb-3">
-                        <small class="text-muted">Active Subscriptions: <strong>35</strong></small>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPackageModal">
-                            <i class="fas fa-edit me-2"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-times me-2"></i>
-                            Deactivate
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Premium Rehab Package -->
-        <div class="col-md-6 col-lg-4 mb-4 package-card">
-            <div class="card h-100 package-item" data-package="premium-rehab" data-status="active">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Premium Rehab</h5>
-                            <p class="text-muted small mb-0">12-week program</p>
-                        </div>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-
-                    <div class="price-section mb-3">
-                        <h3 class="text-primary mb-0">GH₵30,000</h3>
-                        <small class="text-muted">12 weeks program</small>
-                    </div>
-
-                    <div class="features mb-3">
-                        <h6 class="mb-2">Includes:</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="fas fa-check text-success me-2"></i>4x weekly sessions</li>
-                            <li><i class="fas fa-check text-success me-2"></i>One-on-one coaching</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Advanced modalities</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Return to function</li>
-                        </ul>
-                    </div>
-
-                    <div class="text-center mb-3">
-                        <small class="text-muted">Active Subscriptions: <strong>25</strong></small>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPackageModal">
-                            <i class="fas fa-edit me-2"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-times me-2"></i>
-                            Deactivate
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sports Recovery Package -->
-        <div class="col-md-6 col-lg-4 mb-4 package-card">
-            <div class="card h-100 package-item" data-package="sports-recovery" data-status="inactive">
-                <div class="card-body opacity-75">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Sports Recovery</h5>
-                            <p class="text-muted small mb-0">6-week program</p>
-                        </div>
-                        <span class="badge bg-secondary">Inactive</span>
-                    </div>
-
-                    <div class="price-section mb-3">
-                        <h3 class="text-primary mb-0">GH₵22,000</h3>
-                        <small class="text-muted">6 weeks program</small>
-                    </div>
-
-                    <div class="features mb-3">
-                        <h6 class="mb-2">Includes:</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="fas fa-check text-success me-2"></i>Sport-specific training</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Injury prevention</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Performance coaching</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Return to sport</li>
-                        </ul>
-                    </div>
-
-                    <div class="text-center mb-3">
-                        <small class="text-muted">Active Subscriptions: <strong>18</strong></small>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPackageModal">
-                            <i class="fas fa-edit me-2"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-success">
-                            <i class="fas fa-check me-2"></i>
-                            Activate
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Elderly Care Package -->
-        <div class="col-md-6 col-lg-4 mb-4 package-card">
-            <div class="card h-100 package-item" data-package="elderly-care" data-status="inactive">
-                <div class="card-body opacity-75">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Elderly Care</h5>
-                            <p class="text-muted small mb-0">8-week program</p>
-                        </div>
-                        <span class="badge bg-secondary">Inactive</span>
-                    </div>
-
-                    <div class="price-section mb-3">
-                        <h3 class="text-primary mb-0">GH₵18,000</h3>
-                        <small class="text-muted">8 weeks program</small>
-                    </div>
-
-                    <div class="features mb-3">
-                        <h6 class="mb-2">Includes:</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="fas fa-check text-success me-2"></i>Balance & mobility</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Fall prevention</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Strength training</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Independence support</li>
-                        </ul>
-                    </div>
-
-                    <div class="text-center mb-3">
-                        <small class="text-muted">Active Subscriptions: <strong>7</strong></small>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPackageModal">
-                            <i class="fas fa-edit me-2"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-success">
-                            <i class="fas fa-check me-2"></i>
-                            Activate
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Package Modal -->
-<div class="modal fade" id="addPackageModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New Package</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="addPackageForm">
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label for="packageName" class="form-label">Package Name *</label>
-                            <input type="text" class="form-control" id="packageName" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="packagePrice" class="form-label">Price (GH₵) *</label>
-                            <input type="number" class="form-control" id="packagePrice" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="packageDuration" class="form-label">Duration (weeks) *</label>
-                            <input type="number" class="form-control" id="packageDuration" required />
-                        </div>
-                        <div class="col-12">
-                            <label for="packageDescription" class="form-label">Description</label>
-                            <textarea class="form-control" id="packageDescription" rows="3"></textarea>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editPackage('{{ $package->id }}')">
+                                    <i class="fas fa-edit me-2"></i>
+                                    Edit
+                                </button>
+                                <button class="btn btn-sm btn-{{ $package->status === 'active' ? 'outline-danger' : 'outline-success' }}" onclick="togglePackageStatus('{{ $package->id }}', '{{ $package->status }}')">
+                                    <i class="fas fa-{{ $package->status === 'active' ? 'times' : 'check' }} me-2"></i>
+                                    {{ $package->status === 'active' ? 'Deactivate' : 'Activate' }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Package</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Package Modal -->
-<div class="modal fade" id="editPackageModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Package</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="editPackageForm">
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label for="editPackageName" class="form-label">Package Name *</label>
-                            <input type="text" class="form-control" id="editPackageName" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="editPackagePrice" class="form-label">Price (GH₵) *</label>
-                            <input type="number" class="form-control" id="editPackagePrice" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="editPackageDuration" class="form-label">Duration (weeks) *</label>
-                            <input type="number" class="form-control" id="editPackageDuration" required />
-                        </div>
-                        <div class="col-12">
-                            <label for="editPackageDescription" class="form-label">Description</label>
-                            <textarea class="form-control" id="editPackageDescription" rows="3"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-            </form>
-        </div>
+            @endforeach
+        @endif
     </div>
 </div>
 
@@ -496,34 +232,53 @@
     .features ul li {
         margin-bottom: 0.5rem;
     }
+
+    .description {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 0.25rem;
+        border-left: 3px solid #3498db;
+    }
 </style>
 @endsection
 
 @section('js')
 <script>
-    document.getElementById("addPackageForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        const packageData = {
-            name: document.getElementById("packageName").value,
-            price: document.getElementById("packagePrice").value,
-            duration: document.getElementById("packageDuration").value,
-            description: document.getElementById("packageDescription").value,
-        };
-
-        console.log("Adding package:", packageData);
-        window.clinicSystem.showAlert("Package created successfully!", "success");
-
+    // Simple alert function
+    function showAlert(message, type = 'info') {
+        let alertContainer = document.getElementById('alert-container');
+        if (!alertContainer) {
+            alertContainer = document.createElement('div');
+            alertContainer.id = 'alert-container';
+            alertContainer.className = 'position-fixed top-0 end-0 p-3';
+            alertContainer.style.zIndex = '1050';
+            document.body.appendChild(alertContainer);
+        }
+        
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show mb-2`;
+        alert.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                <div class="flex-grow-1">${message}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        alertContainer.appendChild(alert);
+        
         setTimeout(() => {
-            bootstrap.Modal.getInstance(document.getElementById("addPackageModal")).hide();
-            document.getElementById("addPackageForm").reset();
-            window.location.reload();
-        }, 1500);
-    });
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
 
+    // Search packages
     function searchPackages() {
         const searchTerm = document.getElementById("packageSearch").value.toLowerCase();
         const packages = document.querySelectorAll(".package-card");
-
+        
         packages.forEach((pkg) => {
             const title = pkg.querySelector(".card-title").textContent.toLowerCase();
             if (title.includes(searchTerm)) {
@@ -534,10 +289,11 @@
         });
     }
 
+    // Filter by status
     function filterByStatus() {
         const status = document.getElementById("statusFilter").value;
         const packages = document.querySelectorAll(".package-card");
-
+        
         packages.forEach((pkg) => {
             const pkgStatus = pkg.querySelector(".package-item").dataset.status;
             if (status === "" || pkgStatus === status) {
@@ -548,12 +304,45 @@
         });
     }
 
+    // Reset filters
     function resetFilters() {
         document.getElementById("packageSearch").value = "";
         document.getElementById("statusFilter").value = "";
         const packages = document.querySelectorAll(".package-card");
         packages.forEach((pkg) => {
             pkg.style.display = "block";
+        });
+    }
+
+    // Edit package
+    function editPackage(packageId) {
+        window.location.href = `/packages/${packageId}/edit`;
+    }
+
+    // Toggle package status
+    function togglePackageStatus(packageId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        
+        fetch(`/packages/${packageId}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showAlert(data.message || 'Failed to update package status', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating package status:', error);
+            showAlert('Error updating package status', 'danger');
         });
     }
 </script>

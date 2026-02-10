@@ -38,7 +38,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('payments') }}">
+                            <a class="dropdown-item" href="{{ route('billing') }}">
                                 <i class="fas fa-money-bill-wave text-success me-2"></i>
                                 Payment received
                             </a>

@@ -57,13 +57,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('billing') }}">
                         <i class="fas fa-file-invoice-dollar me-2"></i>
-                        Billing
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('payments') }}">
-                        <i class="fas fa-money-bill-wave me-2"></i>
-                        Payments
+                        Billing & Payments
                     </a>
                 </li>
 

@@ -100,6 +100,15 @@
             </select>
           </div>
           <div class="col-md-2">
+            <label for="package_filter" class="form-label">Package</label>
+            <select class="form-select" id="package_filter">
+              <option value="">All Packages</option>
+              @foreach(App\Models\Package::where('status', 'active')->orderBy('package_name')->get() as $package)
+                <option value="{{ $package->id }}">{{ $package->package_name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="col-md-2">
             <label for="status_filter" class="form-label">Status</label>
             <select class="form-select" id="status_filter">
               <option value="">All Status</option>

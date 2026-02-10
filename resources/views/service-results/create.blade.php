@@ -21,49 +21,172 @@
     <!-- Result Form -->
     <div class="row">
         <div class="col-lg-8">
-            <form id="add_result_form" method="POST" action="{{ route('service-results.store') }}" enctype="multipart/form-data">
+            <form id="add_result_form" method="POST" action="{{ route('service-results.save') }}" enctype="multipart/form-data">
                 @csrf
-                <!-- Patient & Service Selection -->
+                <!-- Patient & Service Information -->
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5><i class="fas fa-user-injured me-2"></i>Patient & Service Information</h5>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="patient_id" class="form-label">Patient *</label>
-                                <select class="form-select" id="patient_id" name="patient_id" required>
-                                    <option value="">Select Patient</option>
-                                    @foreach($patients as $patient)
-                                        <option value="{{ $patient->id }}" {{ request('patient_id') == $patient->id ? 'selected' : '' }}>
-                                            {{ $patient->first_name }} {{ $patient->last_name }} ({{ $patient->patient_code }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="service_id" class="form-label">Service *</label>
-                                <select class="form-select" id="service_id" name="service_id" required>
-                                    <option value="">Select Service</option>
-                                    @foreach($services as $service)
-                                        <option value="{{ $service->id }}" data-result-type="{{ $service->result_type }}">
-                                            {{ $service->service_name }} - {{ ucfirst($service->category) }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="visit_id" class="form-label">Visit (Optional)</label>
-                                <select class="form-select" id="visit_id" name="visit_id">
-                                    <option value="">Select Visit</option>
-                                    @foreach($visits as $visit)
-                                        <option value="{{ $visit->id }}">
-                                            Visit #{{ $visit->id }} - {{ $visit->created_at->format('M d, Y H:i') }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">Select a visit if this result is related to a specific visit</small>
-                            </div>
+                            @if(request('patient_id'))
+                                <!-- Pre-filled patient info -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Patient</label>
+                                    <div class="form-control">
+                                        <i class="fas fa-user me-2"></i>
+                                        {{ $patients->where('id', request('patient_id'))->first()->first_name }} {{ $patients->where('id', request('patient_id'))->first()->last_name }} ({{ $patients->where('id', request('patient_id'))->first()->patient_code }})
+                                    </div>
+                                    <input type="hidden" name="patient_id" value="{{ request('patient_id') }}">
+                                </div>
+                            @else
+                                <!-- Patient selection dropdown -->
+                                <div class="col-md-6">
+                                    <label for="patient_id" class="form-label">Patient *</label>
+                                    <select class="form-select" id="patient_id" name="patient_id" required>
+                                        <option value="">Select Patient</option>
+                                        @foreach($patients as $patient)
+                                            <option value="{{ $patient->id }}" {{ request('patient_id') == $patient->id ? 'selected' : '' }}>
+                                                {{ $patient->first_name }} {{ $patient->last_name }} ({{ $patient->patient_code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                            @if(request('service_id'))
+                                <!-- Pre-filled service info -->
+                                @php 
+                                    $serviceId = request('service_id');
+                                    $selectedService = $services->where('id', $serviceId)->first();
+                                    $availableServiceIds = $services->pluck('id')->toArray();
+                                @endphp
+                                @if($selectedService && !is_null($selectedService))
+                                    <div class="col-md-6">
+                                        <label class="form-label">Service</label>
+                                        <div class="form-control">
+                                            <i class="fas fa-flask me-2"></i>
+                                            {{ $selectedService->service_name ?? 'Unknown' }} - {{ ucfirst($selectedService->category ?? 'unknown') }}
+                                        </div>
+                                        <input type="hidden" name="service_id" value="{{ request('service_id') }}">
+                                    </div>
+                                @else
+                                    <div class="col-md-12">
+                                        <div class="alert alert-danger">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            Service with ID {{ request('service_id') }} not found.
+                                            <br>
+                                            <small>Looking for service ID: {{ $serviceId }}</small>
+                                            <br>
+                                            <small>Available service IDs: {{ implode(', ', $availableServiceIds) }}</small>
+                                            <br>
+                                            <small>Total services loaded: {{ $services->count() }}</small>
+                                            <br>
+                                            <small>Selected service is null: {{ is_null($selectedService) ? 'YES' : 'NO' }}</small>
+                                        </div>
+                                    </div>
+                                @endif
+                            @elseif(request('package_id'))
+                                <!-- Pre-filled package info -->
+                                @php $selectedPackage = \App\Models\Package::find(request('package_id')); @endphp
+                                @if($selectedPackage)
+                                    <div class="col-md-6">
+                                        <label class="form-label">Package</label>
+                                        <div class="form-control">
+                                            <i class="fas fa-box me-2"></i>
+                                            {{ $selectedPackage->package_name }}
+                                        </div>
+                                        <input type="hidden" name="package_id" value="{{ request('package_id') }}">
+                                    </div>
+                                @else
+                                    <div class="col-md-12">
+                                        <div class="alert alert-danger">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            Package with ID {{ request('package_id') }} not found.
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                <!-- Service/Package selection dropdown -->
+                                <div class="col-md-6">
+                                    <label for="service_or_package" class="form-label">Service/Package *</label>
+                                    <select class="form-select" id="service_or_package" name="service_or_package" required>
+                                        <option value="">Select Type</option>
+                                        <option value="service">Individual Service</option>
+                                        <option value="package">Package</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="service_selection_section">
+                                        <label for="service_id" class="form-label">Service *</label>
+                                        <select class="form-select" id="service_id" name="service_id">
+                                            <option value="">Select Service</option>
+                                            @foreach($services as $service)
+                                                <option value="{{ $service->id }}" data-result-type="{{ $service->result_type }}">
+                                                    {{ $service->service_name ?? 'Unknown Service' }} - {{ ucfirst($service->category ?? 'unknown') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div id="package_selection_section" style="display: none;">
+                                        <label for="package_id" class="form-label">Package *</label>
+                                        <select class="form-select" id="package_id" name="package_id">
+                                            <option value="">Select Package</option>
+                                            @foreach(App\Models\Package::where('status', 'active')->orderBy('package_name')->get() as $package)
+                                                <option value="{{ $package->id }}">
+                                                    {{ $package->package_name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            @endif
+                            @if(request('visit_id'))
+                                <!-- Pre-filled visit info -->
+                                @php 
+                                    $debugVisitId = request('visit_id');
+                                    $selectedVisit = $visits->where('id', $debugVisitId)->first();
+                                    // Debug info
+                                    $availableVisitIds = $visits->pluck('id')->toArray();
+                                @endphp
+                                @if($selectedVisit)
+                                    <div class="col-md-6">
+                                        <label class="form-label">Visit</label>
+                                        <div class="form-control">
+                                            <i class="fas fa-calendar me-2"></i>
+                                            Visit #{{ $selectedVisit->id }} - {{ $selectedVisit->created_at ? $selectedVisit->created_at->format('M d, Y H:i') : 'No date' }}
+                                        </div>
+                                        <input type="hidden" name="visit_id" value="{{ request('visit_id') }}">
+                                    </div>
+                                @else
+                                    <div class="col-md-12">
+                                        <div class="alert alert-danger">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            Visit with ID {{ request('visit_id') }} not found.
+                                            <br>
+                                            <small>Looking for visit ID: {{ $debugVisitId }}</small>
+                                            <br>
+                                            <small>Available visit IDs: {{ implode(', ', $availableVisitIds) }}</small>
+                                            <br>
+                                            <small>Total visits loaded: {{ $visits->count() }}</small>
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                <!-- Visit selection dropdown -->
+                                <div class="col-md-6">
+                                    <label for="visit_id" class="form-label">Visit (Optional)</label>
+                                    <select class="form-select" id="visit_id" name="visit_id">
+                                        <option value="">Select Visit</option>
+                                        @foreach($visits as $visit)
+                                            <option value="{{ $visit->id }}" {{ request('visit_id') == $visit->id ? 'selected' : '' }}>
+                                                Visit #{{ $visit->id }} - {{ $visit->created_at ? $visit->created_at->format('M d, Y H:i') : 'No date' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Select a visit if this result is related to a specific visit</small>
+                                </div>
+                            @endif
                             <div class="col-md-6">
                                 <label for="result_type" class="form-label">Result Type *</label>
                                 <select class="form-select" id="result_type" name="result_type" required>
@@ -120,6 +243,22 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">Status *</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="">Select Status</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="pending_approval">Pending Approval</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                                <small class="text-muted">Select the status of this result</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="recorded_at" class="form-label">Recorded Date *</label>
+                                <input type="datetime-local" class="form-control" id="recorded_at" name="recorded_at" required>
+                                <small class="text-muted">When was this result recorded?</small>
+                            </div>
                             <div class="col-12">
                                 <label for="notes" class="form-label">Notes</label>
                                 <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Add any additional notes or observations..."></textarea>
@@ -208,7 +347,7 @@
                                 <div class="list-group-item px-0">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
-                                            <h6 class="mb-1">{{ $recent->service->service_name }}</h6>
+                                            <h6 class="mb-1">{{ $recent->service->service_name ?? 'Unknown Service' }}</h6>
                                             <small class="text-muted">{{ $recent->patient->first_name }} {{ $recent->patient->last_name }}</small>
                                         </div>
                                         <span class="badge bg-{{ $recent->status === 'approved' ? 'success' : ($recent->status === 'pending_approval' ? 'warning' : 'secondary') }} small">
@@ -244,7 +383,7 @@ document.getElementById("add_result_form").addEventListener("submit", function(e
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
     
-    fetch('{{ route("service-results.store") }}', {
+    fetch('{{ route("service-results.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -311,14 +450,40 @@ document.getElementById('result_type').addEventListener('change', function() {
     }
 });
 
-// Service selection - auto-set result type
+// Set default values for status and recorded_at
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default status
+    const statusSelect = document.getElementById('status');
+    if (statusSelect && !statusSelect.value) {
+        statusSelect.value = 'draft';
+    }
+    
+    // Set default recorded_at to current datetime
+    const recordedAtInput = document.getElementById('recorded_at');
+    if (recordedAtInput && !recordedAtInput.value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        recordedAtInput.value = now.toISOString().slice(0, 16);
+    }
+});
+
+// Service/Package selection - auto-set result type
 document.getElementById('service_id').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
     const resultType = selectedOption.getAttribute('data-result-type');
+    const isService = selectedOption.getAttribute('data-is-service') === 'true';
     
     if (resultType) {
         document.getElementById('result_type').value = resultType;
         document.getElementById('result_type').dispatchEvent(new Event('change'));
+    }
+    
+    // Update visual indicator based on selection
+    const selectElement = this;
+    if (isService) {
+        selectElement.style.borderColor = '#007bff'; // Blue for services
+    } else {
+        selectElement.style.borderColor = '#28a745'; // Green for packages
     }
 });
 
@@ -341,6 +506,20 @@ document.getElementById('patient_id').addEventListener('change', function() {
             });
     } else {
         visitSelect.innerHTML = '<option value="">Select Visit</option>';
+    }
+});
+
+// Form submission debugging
+$('#add_result_form').on('submit', function(e) {
+    console.log('Form submission data:');
+    const formData = new FormData(this);
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ':', value);
+    }
+    
+    // Show debug alert for package submission
+    if (formData.get('package_id')) {
+        console.log('Package ID being submitted:', formData.get('package_id'));
     }
 });
 

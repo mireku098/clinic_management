@@ -1447,9 +1447,9 @@ function loadModuleData(moduleName) {
     // Map module names to API endpoints
     const endpointMap = {
         'overview': 'overview',
-        'billing': 'bills',
-        'visits': 'visits',
-        'service-results': 'service-results'
+        'vitals': 'vitals',
+        'billing': 'billing',
+        'medical-history': 'medical-history'
     };
     
     if (endpointMap[moduleName]) {
@@ -1482,14 +1482,14 @@ function updateModuleContent(moduleName, data) {
         case 'overview':
             updateOverviewModule(data);
             break;
+        case 'vitals':
+            updateVitalsModule(data);
+            break;
         case 'billing':
             updateBillingModule(data);
             break;
-        case 'visits':
-            updateVisitsModule(data);
-            break;
-        case 'service-results':
-            updateServiceResultsModule(data);
+        case 'medical-history':
+            updateMedicalHistoryModule(data);
             break;
         default:
             console.log('No update handler for module:', moduleName);
@@ -1500,11 +1500,107 @@ function updateOverviewModule(data) {
     // Update the overview statistics
     const totalVisitsElement = document.querySelector('#overview-module .text-success h4');
     const totalBillsElement = document.querySelector('#overview-module .text-info h4');
-    const activeBillsElement = document.querySelector('#overview-module .text-warning h4');
+    const outstandingElement = document.querySelector('#overview-module .text-warning h4');
     
     if (totalVisitsElement) totalVisitsElement.textContent = data.total_visits || 0;
-    if (totalBillsElement) totalBillsElement.textContent = data.total_bills || 0;
-    if (activeBillsElement) activeBillsElement.textContent = data.active_bills || 0;
+    if (totalBillsElement) totalBillsElement.textContent = data.active_services_count || 0;
+    if (outstandingElement) outstandingElement.textContent = `GH₵${data.outstanding_balance || '0.00'}`;
+    
+    // Update last visit info
+    const lastVisitElement = document.querySelector('#overview-module .last-visit');
+    if (lastVisitElement) {
+        lastVisitElement.innerHTML = `
+            <strong>Last Visit:</strong> ${data.last_visit_date}<br>
+            <strong>Type:</strong> ${data.last_visit_type || 'N/A'}
+        `;
+    }
+    
+    // Update active services
+    const activeServicesElement = document.querySelector('#overview-module .active-services');
+    if (activeServicesElement && data.active_services) {
+        activeServicesElement.innerHTML = data.active_services.map(service => 
+            `<span class="badge bg-light text-dark me-1">${service.service_name}</span>`
+        ).join('');
+    }
+    
+    // Update active packages
+    const activePackagesElement = document.querySelector('#overview-module .active-packages');
+    if (activePackagesElement && data.active_packages) {
+        activePackagesElement.innerHTML = data.active_packages.map(pkg => 
+            `<span class="badge bg-primary me-1">${pkg.package_name}</span>`
+        ).join('');
+    }
+}
+
+function updateVitalsModule(data) {
+    const vitalsTableBody = document.querySelector('#vitals-module tbody');
+    
+    if (!vitalsTableBody) return;
+    
+    if (!data.has_vitals) {
+        vitalsTableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted">
+                    <i class="fas fa-heartbeat me-2"></i>
+                    No vitals recorded for this patient
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    vitalsTableBody.innerHTML = data.vitals.map(vital => `
+        <tr>
+            <td>${vital.visit_date}</td>
+            <td>${vital.visit_time || 'N/A'}</td>
+            <td>${vital.temperature || 'N/A'}</td>
+            <td>${vital.blood_pressure || 'N/A'}</td>
+            <td>${vital.heart_rate || 'N/A'}</td>
+            <td>${vital.oxygen_saturation || 'N/A'}</td>
+            <td>${vital.respiratory_rate || 'N/A'}</td>
+            <td>${vital.weight || 'N/A'}</td>
+            <td>${vital.height || 'N/A'}</td>
+            <td>${vital.bmi || 'N/A'}</td>
+        </tr>
+    `).join('');
+}
+
+function updateMedicalHistoryModule(data) {
+    const historyTableBody = document.querySelector('#medical-history-module tbody');
+    
+    if (!historyTableBody) return;
+    
+    if (!data.has_history) {
+        historyTableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted">
+                    <i class="fas fa-history me-2"></i>
+                    No medical history recorded for this patient
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    historyTableBody.innerHTML = data.medical_history.map(visit => `
+        <tr>
+            <td>${visit.visit_date}</td>
+            <td>${visit.chief_complaint || 'N/A'}</td>
+            <td>${visit.assessment || 'N/A'}</td>
+            <td>${visit.treatment_plan || 'N/A'}</td>
+            <td>
+                ${visit.services.length > 0 ? visit.services.map(s => 
+                    `<span class="badge bg-light text-dark me-1">${s.name}</span>`
+                ).join('') : 'No services'}
+                ${visit.package ? `<span class="badge bg-primary">${visit.package.name}</span>` : ''}
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-info" onclick="viewVisitDetails(${visit.visit_id})">
+                    <i class="fas fa-eye"></i> Details
+                </button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 function updateBillingModule(data) {
@@ -1514,10 +1610,10 @@ function updateBillingModule(data) {
     const outstandingElement = document.querySelector('.bg-warning h3');
     const activeBillsElement = document.querySelector('.bg-info h3');
     
-    if (totalBilledElement) totalBilledElement.textContent = `$${(data.summary.total_billed || 0).toFixed(2)}`;
-    if (totalPaidElement) totalPaidElement.textContent = `$${(data.summary.total_paid || 0).toFixed(2)}`;
-    if (outstandingElement) outstandingElement.textContent = `$${(data.summary.outstanding || 0).toFixed(2)}`;
-    if (activeBillsElement) activeBillsElement.textContent = data.summary.active_bills || 0;
+    if (totalBilledElement) totalBilledElement.textContent = `GH₵${data.total_billed || '0.00'}`;
+    if (totalPaidElement) totalPaidElement.textContent = `GH₵${data.total_paid || '0.00'}`;
+    if (outstandingElement) outstandingElement.textContent = `GH₵${data.outstanding_balance || '0.00'}`;
+    if (activeBillsElement) activeBillsElement.textContent = data.payment_summary.pending_bills || 0;
     
     // Update bills table
     const billsTableBody = document.getElementById('billsTableBody');
@@ -1528,29 +1624,51 @@ function updateBillingModule(data) {
             
             return `
                 <tr>
-                    <td><span class="badge bg-primary fs-6">${bill.bill_code || 'B' + bill.id}</span></td>
-                    <td><span class="badge bg-info">${bill.type || 'Service'}</span></td>
-                    <td>${bill.created_at ? new Date(bill.created_at).toLocaleDateString() : 'N/A'}</td>
-                    <td class="fw-bold text-primary">$${(bill.total_amount || 0).toFixed(2)}</td>
-                    <td class="text-success fw-semibold">$${(bill.amount_paid || 0).toFixed(2)}</td>
-                    <td class="text-warning fw-bold">$${((bill.total_amount || 0) - (bill.amount_paid || 0)).toFixed(2)}</td>
+                    <td><span class="badge bg-primary fs-6">B${bill.bill_id}</span></td>
+                    <td><span class="badge bg-info">${bill.bill_type}</span></td>
+                    <td>${bill.created_at}</td>
+                    <td class="fw-bold text-primary">GH₵${bill.total_amount}</td>
+                    <td class="fw-bold text-success">GH₵${bill.amount_paid}</td>
+                    <td class="fw-bold text-warning">GH₵${bill.balance}</td>
                     <td><span class="badge bg-${statusClass}">${statusText}</span></td>
-                    <td class="text-center">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-outline-primary" onclick="viewBillDetails('${bill.bill_code || 'B' + bill.id}')" title="View Details">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="btn btn-outline-success" onclick="showPaymentModal('${bill.bill_code || 'B' + bill.id}')" title="Make Payment">
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm me-1" onclick="viewBillDetails(${bill.bill_id})" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${bill.balance > 0 ? `
+                            <button class="btn btn-outline-success btn-sm" onclick="makePayment(${bill.bill_id})" title="Make Payment">
                                 <i class="fas fa-money-bill-wave"></i>
                             </button>
-                            <button class="btn btn-outline-info" onclick="printBill('${bill.bill_code || 'B' + bill.id}')" title="Print Bill">
-                                <i class="fas fa-print"></i>
-                            </button>
-                        </div>
+                        ` : ''}
                     </td>
                 </tr>
             `;
         }).join('');
+    }
+    
+    // Update payment history
+    const paymentHistoryBody = document.getElementById('paymentHistoryBody');
+    if (paymentHistoryBody && data.bills) {
+        const allPayments = data.bills.flatMap(bill => bill.payments || []);
+        
+        if (allPayments.length === 0) {
+            paymentHistoryBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No payments recorded</td>
+                </tr>
+            `;
+        } else {
+            paymentHistoryBody.innerHTML = allPayments.map(payment => `
+                <tr>
+                    <td><span class="badge bg-success">P${payment.payment_id}</span></td>
+                    <td>${payment.payment_date}</td>
+                    <td>GH₵${payment.amount_paid}</td>
+                    <td>${payment.payment_method}</td>
+                    <td>${payment.received_by}</td>
+                    <td>${payment.notes || '-'}</td>
+                </tr>
+            `).join('');
+        }
     }
 }
 

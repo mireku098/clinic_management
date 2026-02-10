@@ -199,21 +199,31 @@ class PatientController extends Controller
                 ]);
         }
         
-        $patient = Patient::where('patient_code', $patientCode)->first();
-        
-        if (!$patient) {
+        try {
+            $contextData = \App\Services\PatientContextService::getPatientContextData($patientCode);
+            
+            return view('patients.context', [
+                'patient' => $contextData['patient'],
+                'patientId' => $patientCode,
+                'contextData' => $contextData,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return redirect()->route('patients')
                 ->with('swal', [
                     'icon' => 'error',
                     'title' => 'Patient Not Found',
                     'text' => "Patient with code {$patientCode} was not found.",
                 ]);
+        } catch (\Exception $e) {
+            \Log::error("Error loading patient context: " . $e->getMessage());
+            
+            return redirect()->route('patients')
+                ->with('swal', [
+                    'icon' => 'error',
+                    'title' => 'Error Loading Patient',
+                    'text' => 'An error occurred while loading patient data. Please try again.',
+                ]);
         }
-        
-        return view('patients.context', [
-            'patient' => $patient,
-            'patientId' => $patientCode
-        ]);
     }
 
     /**
@@ -222,34 +232,76 @@ class PatientController extends Controller
     public function getOverviewData($patientCode)
     {
         try {
-            $patient = Patient::where('patient_code', $patientCode)->firstOrFail();
-            
-            $totalVisits = $patient->visits()->count();
-            $totalBills = $patient->bills()->count();
-            $activeBills = $patient->bills()->where('status', '!=', 'paid')->count();
-            
-            $regDate = $patient->registered_at;
-            if (is_string($regDate)) {
-                $regDateFormatted = date('F d, Y', strtotime($regDate));
-            } elseif ($regDate instanceof \Carbon\Carbon) {
-                $regDateFormatted = $regDate->format('F d, Y');
-            } else {
-                $regDateFormatted = 'N/A';
-            }
+            $contextData = \App\Services\PatientContextService::getPatientContextData($patientCode);
             
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'total_visits' => $totalVisits,
-                    'total_bills' => $totalBills,
-                    'active_bills' => $activeBills,
-                    'registration_date' => $regDateFormatted
-                ]
+                'data' => $contextData['overview']
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading overview data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get patient vitals data for API
+     */
+    public function getVitalsData($patientCode)
+    {
+        try {
+            $contextData = \App\Services\PatientContextService::getPatientContextData($patientCode);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $contextData['vitals']
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading vitals data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get patient medical history data for API
+     */
+    public function getMedicalHistoryData($patientCode)
+    {
+        try {
+            $contextData = \App\Services\PatientContextService::getPatientContextData($patientCode);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $contextData['medicalHistory']
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading medical history: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get patient billing data for API
+     */
+    public function getBillingData($patientCode)
+    {
+        try {
+            $contextData = \App\Services\PatientContextService::getPatientContextData($patientCode);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $contextData['billing']
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading billing data: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -335,22 +387,24 @@ class PatientController extends Controller
     }
 
     /**
-     * Get patient vitals data for API
+     * Get all patients for API (used in billing dropdown)
      */
-    public function getVitalsData($patientCode)
+    public function getPatientsApi()
     {
         try {
-            $patient = Patient::where('patient_code', $patientCode)->firstOrFail();
+            $patients = Patient::select('id', 'first_name', 'last_name', 'patient_code')
+                ->orderBy('first_name')
+                ->get();
             
-            // Return empty vitals for now - this can be implemented later
             return response()->json([
                 'success' => true,
-                'data' => []
+                'data' => $patients
             ]);
+            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error loading vitals data: ' . $e->getMessage()
+                'message' => 'Error loading patients: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -390,6 +444,33 @@ class PatientController extends Controller
                 'success' => false,
                 'message' => 'Search failed: ' . $e->getMessage()
             ], 500);
+        }
+    }
+    
+    /**
+     * Get patient data as JSON for BMI calculation
+     */
+    public function getPatientJson($id)
+    {
+        try {
+            $patient = Patient::findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'patient' => [
+                    'id' => $patient->id,
+                    'first_name' => $patient->first_name,
+                    'last_name' => $patient->last_name,
+                    'patient_code' => $patient->patient_code,
+                    'height' => $patient->height,
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Patient not found: ' . $e->getMessage()
+            ], 404);
         }
     }
 }

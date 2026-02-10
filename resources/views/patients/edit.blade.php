@@ -122,7 +122,6 @@
                                     <option value="">Select Gender</option>
                                     <option value="male" {{ $patient->gender === 'male' ? 'selected' : '' }}>Male</option>
                                     <option value="female" {{ $patient->gender === 'female' ? 'selected' : '' }}>Female</option>
-                                    <option value="other" {{ $patient->gender === 'other' ? 'selected' : '' }}>Other</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -148,6 +147,11 @@
                             <div class="col-md-6">
                                 <label for="occupation" class="form-label">Occupation</label>
                                 <input type="text" class="form-control" id="occupation" name="occupation" value="{{ $patient->occupation }}" />
+                            </div>
+                            <div class="col-md-6">
+                                <label for="height" class="form-label">Height (cm)</label>
+                                <input type="number" step="0.1" class="form-control" id="height" name="height" placeholder="175.5" value="{{ $patient->height }}" />
+                                <small class="text-muted">Patient's height in centimeters</small>
                             </div>
                             <div class="col-md-6">
                                 <label for="marital_status" class="form-label">Marital Status</label>
