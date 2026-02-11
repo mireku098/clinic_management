@@ -31,8 +31,8 @@
                             <input id="email" type="email" name="email" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="phone">Mobile Number</label>
-                            <input id="phone" type="text" name="phone" class="form-control" required>
+                            <label for="phone">Mobile Number (Optional)</label>
+                            <input id="phone" type="text" name="phone" class="form-control">
                         </div>
                         <div class="form-group password-field">
                             <label for="password">Password</label>

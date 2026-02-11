@@ -11,7 +11,7 @@
             <p class="text-muted">Update test result information</p>
         </div>
         <div>
-            <a href="{{ route('service-results.index') }}" class="btn btn-outline-secondary">
+            <a href="{{ $result->patient ? route('patients.service-results', $result->patient->id) : route('service-results.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-2"></i>
                 Back to Results
             </a>
@@ -43,29 +43,49 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label for="service_id" class="form-label">Service *</label>
-                                <select class="form-select" id="service_id" name="service_id" required>
-                                    <option value="">Select Service</option>
-                                    @foreach($services as $service)
-                                        <option value="{{ $service->id }}" 
-                                                data-result-type="{{ $service->result_type }}"
-                                                {{ $result->service_id == $service->id ? 'selected' : '' }}>
-                                            {{ $service->service_name }} - {{ ucfirst($service->category) }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                @if($result->package_id)
+                                    <label for="package_id" class="form-label">Package *</label>
+                                    <div class="form-control">
+                                        <i class="fas fa-box me-2"></i>
+                                        {{ $result->package->package_name ?? 'Unknown Package' }} - Package
+                                    </div>
+                                    <input type="hidden" name="package_id" value="{{ $result->package_id }}">
+                                    <small class="text-muted">This result is linked to the above package</small>
+                                @else
+                                    <label for="service_id" class="form-label">Service *</label>
+                                    <select class="form-select" id="service_id" name="service_id" required>
+                                        <option value="">Select Service</option>
+                                        @foreach($services as $service)
+                                            <option value="{{ $service->id }}" 
+                                                    data-result-type="{{ $service->result_type }}"
+                                                    {{ $result->service_id == $service->id ? 'selected' : '' }}>
+                                                {{ $service->service_name }} - {{ ucfirst($service->category) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                @endif
                             </div>
                             <div class="col-md-6">
-                                <label for="visit_id" class="form-label">Visit (Optional)</label>
-                                <select class="form-select" id="visit_id" name="visit_id">
-                                    <option value="">Select Visit</option>
-                                    @foreach($visits as $visit)
-                                        <option value="{{ $visit->id }}" {{ $result->visit_id == $visit->id ? 'selected' : '' }}>
-                                            Visit #{{ $visit->id }} - {{ $visit->created_at->format('M d, Y H:i') }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">Select a visit if this result is related to a specific visit</small>
+                                @if($result->visit_id)
+                                    <label for="visit_id" class="form-label">Visit</label>
+                                    <div class="form-control">
+                                        <i class="fas fa-calendar me-2"></i>
+                                        Visit #{{ $result->visit->id }} - {{ $result->visit->visit_date ? \Carbon\Carbon::parse($result->visit->visit_date)->format('M d, Y') : 'No date' }} @ {{ $result->visit->visit_time ? \Carbon\Carbon::parse($result->visit->visit_time)->format('H:i') : 'No time' }}
+                                    </div>
+                                    <input type="hidden" name="visit_id" value="{{ $result->visit_id }}">
+                                    <small class="text-muted">This result is linked to the above visit</small>
+                                @else
+                                    <label for="visit_id" class="form-label">Visit (Optional)</label>
+                                    <select class="form-select" id="visit_id" name="visit_id">
+                                        <option value="">Select Visit</option>
+                                        @foreach($visits as $visit)
+                                            <option value="{{ $visit->id }}" {{ $result->visit_id == $visit->id ? 'selected' : '' }}>
+                                                Visit #{{ $visit->id }} - {{ $visit->visit_date ? \Carbon\Carbon::parse($visit->visit_date)->format('M d, Y') : 'No date' }} @ {{ $visit->visit_time ? \Carbon\Carbon::parse($visit->visit_time)->format('H:i') : 'No time' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Select a visit if this result is related to a specific visit</small>
+                                @endif
                             </div>
                             <div class="col-md-6">
                                 <label for="result_type" class="form-label">Result Type *</label>
@@ -75,6 +95,22 @@
                                     <option value="numeric" {{ $result->result_type === 'numeric' ? 'selected' : '' }}>Numeric</option>
                                     <option value="file" {{ $result->result_type === 'file' ? 'selected' : '' }}>File Upload</option>
                                 </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">Status *</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="">Select Status</option>
+                                    <option value="draft" {{ $result->status === 'draft' ? 'selected' : '' }}>Draft</option>
+                                    <option value="pending_approval" {{ $result->status === 'pending_approval' ? 'selected' : '' }}>Pending Approval</option>
+                                    <option value="approved" {{ $result->status === 'approved' ? 'selected' : '' }}>Approved</option>
+                                    <option value="rejected" {{ $result->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="recorded_at" class="form-label">Recorded Date *</label>
+                                <input type="datetime-local" class="form-control" id="recorded_at" name="recorded_at" required 
+                                       value="{{ $result->recorded_at ? $result->recorded_at->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i') }}">
+                                <small class="text-muted">When this result was recorded</small>
                             </div>
                         </div>
                     </div>
@@ -151,7 +187,7 @@
                                 Reset Form
                             </button>
                             <div class="d-flex gap-2">
-                                <a href="{{ route('service-results.index') }}" class="btn btn-outline-info">
+                                <a href="{{ $result->patient ? route('patients.service-results', $result->patient->id) : route('service-results.index') }}" class="btn btn-outline-info">
                                     <i class="fas fa-times me-2"></i>
                                     Cancel
                                 </a>
@@ -267,7 +303,7 @@ document.getElementById("edit_result_form").addEventListener("submit", function(
                 timer: 2000,
                 showConfirmButton: false
             }).then(() => {
-                window.location.href = '{{ route("service-results.index") }}';
+                window.location.href = '{{ $result->patient ? route("patients.service-results", $result->patient->id) : route("service-results.index") }}';
             });
         } else {
             let errorMessage = data.message || 'Something went wrong. Please try again.';
@@ -370,9 +406,27 @@ function clearFile() {
 // Initialize result type on page load
 document.addEventListener('DOMContentLoaded', function() {
     const resultType = document.getElementById('result_type').value;
-    if (resultType) {
-        document.getElementById(resultType + '_result_section').style.display = 'block';
-    }
+    showResultSection(resultType);
 });
+
+// Result type change handler
+document.getElementById('result_type').addEventListener('change', function() {
+    showResultSection(this.value);
+});
+
+function showResultSection(resultType) {
+    // Hide all result sections
+    document.querySelectorAll('.result-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show the selected result section
+    if (resultType) {
+        const targetSection = document.getElementById(resultType + '_result_section');
+        if (targetSection) {
+            targetSection.style.display = 'block';
+        }
+    }
+}
 </script>
 @endsection

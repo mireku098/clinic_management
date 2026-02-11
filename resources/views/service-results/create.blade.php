@@ -1,27 +1,43 @@
 @extends('layouts.app')
 
-@section('title', 'Add Service Result')
+@section('title', 'Add Service Result - ' . ($patient->first_name ?? 'New') . ' ' . ($patient->last_name ?? 'Result'))
 
 @section('content')
 <div class="container-fluid">
     <!-- Page Header -->
-    <div class="page-header d-flex justify-content-between align-items-center">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>Add Service Result</h1>
-            <p class="text-muted">Record test results and documentation</p>
+            <h1 class="mb-0">Add Service Result</h1>
+            <p class="text-muted mb-0">Record test results and documentation</p>
+            @if($patient)
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li><a href="{{ route('patients') }}">Patients</a></li>
+                        <li><a href="{{ route('patients.show', $patient->id) }}">{{ $patient->first_name }} {{ $patient->last_name }}</a></li>
+                        <li class="active">Add Result</li>
+                    </ol>
+                </nav>
+            @endif
         </div>
         <div>
-            <a href="{{ route('service-results.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i>
-                Back to Results
-            </a>
+            @if($patient)
+                <a href="{{ route('patients.service-results', $patient->id) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Back to Results
+                </a>
+            @else
+                <a href="{{ route('service-results.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Back to Results
+                </a>
+            @endif
         </div>
     </div>
 
     <!-- Result Form -->
     <div class="row">
         <div class="col-lg-8">
-            <form id="add_result_form" method="POST" action="{{ route('service-results.save') }}" enctype="multipart/form-data">
+            <form id="add_result_form" method="POST" action="{{ $patient ? route('patients.service-results.save', $patient->id) : route('service-results.save') }}" enctype="multipart/form-data">
                 @csrf
                 <!-- Patient & Service Information -->
                 <div class="card mb-4">
@@ -154,7 +170,7 @@
                                         <label class="form-label">Visit</label>
                                         <div class="form-control">
                                             <i class="fas fa-calendar me-2"></i>
-                                            Visit #{{ $selectedVisit->id }} - {{ $selectedVisit->created_at ? $selectedVisit->created_at->format('M d, Y H:i') : 'No date' }}
+                                            Visit #{{ $selectedVisit->id }} - {{ $selectedVisit->visit_date ? $selectedVisit->visit_date->format('M d, Y') : 'No date' }} @ {{ $selectedVisit->visit_time ? $selectedVisit->visit_time->format('H:i') : 'No time' }}
                                         </div>
                                         <input type="hidden" name="visit_id" value="{{ request('visit_id') }}">
                                     </div>
@@ -383,7 +399,7 @@ document.getElementById("add_result_form").addEventListener("submit", function(e
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
     
-    fetch('{{ route("service-results.save") }}', {
+    fetch('{{ $patient ? route("patients.service-results.save", $patient->id) : route("service-results.save") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -402,7 +418,7 @@ document.getElementById("add_result_form").addEventListener("submit", function(e
                 timer: 2000,
                 showConfirmButton: false
             }).then(() => {
-                window.location.href = '{{ route("service-results.index") }}';
+                window.location.href = '{{ $patient ? route("patients.service-results", $patient->id) : route("service-results.index") }}';
             });
         } else {
             let errorMessage = data.message || 'Something went wrong. Please try again.';
@@ -465,6 +481,20 @@ document.addEventListener('DOMContentLoaded', function() {
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         recordedAtInput.value = now.toISOString().slice(0, 16);
     }
+    
+    // Handle pre-selected service from URL
+    const serviceSelect = document.getElementById('service_id');
+    if (serviceSelect && serviceSelect.value) {
+        // Trigger change event to set result type
+        serviceSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Handle pre-selected result type from URL or service default
+    const resultTypeSelect = document.getElementById('result_type');
+    if (resultTypeSelect && resultTypeSelect.value) {
+        // Trigger change event to show appropriate section
+        resultTypeSelect.dispatchEvent(new Event('change'));
+    }
 });
 
 // Service/Package selection - auto-set result type
@@ -497,9 +527,13 @@ document.getElementById('patient_id').addEventListener('change', function() {
             .then(response => response.json())
             .then(data => {
                 visitSelect.innerHTML = '<option value="">Select Visit</option>';
-                data.visits.forEach(visit => {
-                    visitSelect.innerHTML += `<option value="${visit.id}">Visit #${visit.id} - ${new Date(visit.created_at).toLocaleString()}</option>`;
-                });
+                if (data.success && data.visits) {
+                    data.visits.forEach(visit => {
+                        const visitDate = visit.visit_date ? new Date(visit.visit_date).toLocaleDateString() : 'No date';
+                        const visitTime = visit.visit_time ? new Date(visit.visit_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'No time';
+                        visitSelect.innerHTML += `<option value="${visit.id}">Visit #${visit.id} - ${visitDate} @ ${visitTime}</option>`;
+                    });
+                }
             })
             .catch(error => {
                 console.error('Error loading visits:', error);

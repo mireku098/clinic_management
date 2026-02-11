@@ -81,6 +81,9 @@
             session()->forget('swal');
         @endphp
     @endif
+    
+    <!-- Session Manager -->
+    <script src="{{ asset('assets/js/session-manager.js') }}"></script>
     @yield('js')
 </body>
 </html>

@@ -378,15 +378,78 @@
     });
 
     document.getElementById("patient_form").addEventListener("submit", function (e) {
+        e.preventDefault(); // Prevent normal form submission
+        console.log('AJAX form submission started');
+        
         const formData = new FormData(this);
         const patientData = Object.fromEntries(formData);
+        console.log('Form data:', patientData);
 
-        if (!patientData.first_name || !patientData.last_name || !patientData.gender || !patientData.date_of_birth || !patientData.phone) {
-            e.preventDefault();
-            window.clinicSystem.showAlert("Please fill in all required fields", "danger");
+        // Only validate required fields (phone is optional)
+        if (!patientData.first_name || !patientData.last_name || !patientData.gender || !patientData.date_of_birth) {
+            console.log('Validation failed - missing required fields');
+            window.clinicSystem.showAlert("Please fill in all required fields (Name, Gender, Date of Birth)", "danger");
             return;
         }
-        // Allow native form POST to proceed to backend
+        
+        console.log('Validation passed - submitting via AJAX');
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Registering...';
+        submitBtn.disabled = true;
+        
+        // Submit via AJAX
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Response:', data);
+            
+            if (data.success) {
+                // Success - show success message then redirect
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Patient Registered!',
+                    text: data.message || 'Patient has been created successfully.',
+                    showConfirmButton: true,
+                    timer: 2000,
+                    timerProgressBar: true
+                }).then(() => {
+                    // Redirect after success message
+                    window.location.href = '/patients';
+                });
+            } else {
+                // Error - show error message
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Registration Failed',
+                    text: data.message || 'An error occurred while creating the patient.',
+                    showConfirmButton: true,
+                });
+            }
+        })
+        .catch(error => {
+            console.error('AJAX Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'Could not connect to the server. Please try again.',
+                showConfirmButton: true,
+            });
+        })
+        .finally(() => {
+            // Restore button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
     });
 
     function saveAsDraft() {

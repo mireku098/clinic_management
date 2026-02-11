@@ -18,7 +18,7 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>248</h3>
+                    <h3>{{ $totalPatients }}</h3>
                     <p>Total Patients</p>
                 </div>
             </div>
@@ -30,7 +30,7 @@
                     <i class="fas fa-calendar-check"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>12</h3>
+                    <h3>{{ $todayVisits }}</h3>
                     <p>Today's Visits</p>
                 </div>
             </div>
@@ -42,7 +42,7 @@
                     <i class="fas fa-box"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>8</h3>
+                    <h3>{{ $activePackages }}</h3>
                     <p>Active Packages</p>
                 </div>
             </div>
@@ -54,7 +54,7 @@
                     <i class="fas fa-money-bill-wave"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>GH₵45,600</h3>
+                    <h3>GH₵{{ number_format($todayRevenue, 2) }}</h3>
                     <p>Today's Revenue</p>
                 </div>
             </div>
@@ -70,35 +70,21 @@
                 </div>
                 <div class="card-body">
                     <div class="activity-list">
+                        @forelse ($recentActivity as $activity)
                         <div class="activity-item">
                             <div class="activity-icon">
-                                <i class="fas fa-user-plus text-primary"></i>
+                                <i class="{{ $activity['icon'] }}"></i>
                             </div>
                             <div class="activity-content">
-                                <p><strong>New patient registered:</strong> Sarah Johnson</p>
-                                <small class="text-muted">2 minutes ago</small>
+                                <p><strong>{{ $activity['description'] }}</strong></p>
+                                <small class="text-muted">{{ $activity['time'] }}</small>
                             </div>
                         </div>
-
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-calendar-check text-success"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p><strong>Visit completed:</strong> Michael Brown - Physiotherapy Session</p>
-                                <small class="text-muted">15 minutes ago</small>
-                            </div>
+                        @empty
+                        <div class="text-muted text-center py-3">
+                            <p>No recent activity</p>
                         </div>
-
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-money-bill-wave text-success"></i>
-                            </div>
-                            <div class="activity-content">
-                                <p><strong>Payment received:</strong> GH₵15,000 from Emma Davis</p>
-                                <small class="text-muted">1 hour ago</small>
-                            </div>
-                        </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
@@ -153,27 +139,19 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @forelse ($upcomingAppointments as $appointment)
                                 <tr>
-                                    <td>John Doe</td>
-                                    <td>Consultation</td>
-                                    <td>Today</td>
-                                    <td>2:00 PM</td>
-                                    <td><span class="badge bg-warning">Scheduled</span></td>
+                                    <td>{{ $appointment['patient_name'] }}</td>
+                                    <td>{{ $appointment['service'] }}</td>
+                                    <td>{{ $appointment['date'] }}</td>
+                                    <td>{{ $appointment['time'] }}</td>
+                                    <td><span class="badge bg-{{ $appointment['status'] == 'Scheduled' ? 'warning' : 'info' }}">{{ $appointment['status'] }}</span></td>
                                 </tr>
+                                @empty
                                 <tr>
-                                    <td>Jane Smith</td>
-                                    <td>Physiotherapy</td>
-                                    <td>Today</td>
-                                    <td>3:30 PM</td>
-                                    <td><span class="badge bg-warning">Scheduled</span></td>
+                                    <td colspan="5" class="text-center text-muted">No upcoming appointments</td>
                                 </tr>
-                                <tr>
-                                    <td>Robert Johnson</td>
-                                    <td>Massage Therapy</td>
-                                    <td>Tomorrow</td>
-                                    <td>10:00 AM</td>
-                                    <td><span class="badge bg-info">Confirmed</span></td>
-                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>

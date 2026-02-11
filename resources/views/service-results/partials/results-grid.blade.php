@@ -60,7 +60,7 @@
           
           <div class="d-flex justify-content-between align-items-center">
             <small class="text-muted">
-              <i class="fas fa-clock me-1"></i> {{ $result->created_at->format('M d, Y H:i') }}
+              <i class="fas fa-clock me-1"></i> {{ optional($result->created_at)->format('M d, Y H:i') }}
             </small>
             <div class="btn-group btn-group-sm">
               <a href="{{ route('service-results.show', $result->id) }}" class="btn btn-outline-primary" title="View">
