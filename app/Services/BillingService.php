@@ -11,6 +11,7 @@ use App\Models\Package;
 use App\Models\Service;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class BillingService
 {
@@ -22,12 +23,27 @@ class BillingService
         try {
             // Check if visit has any billable items
             $hasPackage = $visit->package_id && $visit->package;
-            $hasServices = $visit->services()->exists();
+            
+            // Check for services both in relationship table and JSON data
+            $hasServicesRelation = $visit->services()->exists();
+            $hasServicesJson = $visit->selected_services && !empty(json_decode($visit->selected_services));
+            $hasServices = $hasServicesRelation || $hasServicesJson;
             
             if (!$hasPackage && !$hasServices) {
-                Log::info("Visit {$visit->id} has no billable items");
+                Log::info("Visit {$visit->id} has no billable items", [
+                    'has_package' => $hasPackage,
+                    'has_services_relation' => $hasServicesRelation,
+                    'has_services_json' => $hasServicesJson,
+                    'selected_services' => $visit->selected_services
+                ]);
                 return null;
             }
+            
+            Log::info("Visit {$visit->id} has billable items", [
+                'has_package' => $hasPackage,
+                'has_services' => $hasServices,
+                'total_amount' => $visit->total_amount
+            ]);
             
             // Check if bill already exists for this visit
             $existingBill = Bill::where('visit_id', $visit->id)->first();
@@ -58,11 +74,29 @@ class BillingService
         if ($visit->package_id && $visit->package) {
             $totalAmount = $visit->package->total_cost;
         } else {
-            $totalAmount = $visit->services()->sum('service_price');
+            // Calculate total from JSON services and relationship table
+            $totalAmount = 0;
+            
+            // Add services from JSON data
+            if ($visit->selected_services) {
+                $servicesFromJson = json_decode($visit->selected_services, true) ?: [];
+                foreach ($servicesFromJson as $serviceData) {
+                    $totalAmount += $serviceData['price'] ?? 0;
+                }
+            }
+            
+            // Add services from relationship table (if any exist)
+            if ($visit->services()->exists()) {
+                $totalAmount += $visit->services()->sum('service_price');
+            }
         }
         
         // Create bill
+        // Generate unique bill number
+        $billNumber = self::generateBillNumber();
+        
         $bill = Bill::create([
+            'bill_number' => $billNumber,
             'patient_id' => $visit->patient_id,
             'visit_id' => $visit->id,
             'bill_type' => $billType,
@@ -93,7 +127,21 @@ class BillingService
         if ($visit->package_id && $visit->package) {
             $totalAmount = $visit->package->total_cost;
         } else {
-            $totalAmount = $visit->services()->sum('service_price');
+            // Calculate total from JSON services and relationship table
+            $totalAmount = 0;
+            
+            // Add services from JSON data
+            if ($visit->selected_services) {
+                $servicesFromJson = json_decode($visit->selected_services, true) ?: [];
+                foreach ($servicesFromJson as $serviceData) {
+                    $totalAmount += $serviceData['price'] ?? 0;
+                }
+            }
+            
+            // Add services from relationship table (if any exist)
+            if ($visit->services()->exists()) {
+                $totalAmount += $visit->services()->sum('service_price');
+            }
         }
         
         // Update bill
@@ -146,8 +194,36 @@ class BillingService
                     'notes' => 'Package service: ' . ($packageService->service_name ?? $packageService->service->service_name),
                 ]);
             }
-        } else {
-            // Create individual service bill items
+        }
+        
+        // Handle individual services - check both JSON and relationship table
+        $servicesFromJson = [];
+        if ($visit->selected_services) {
+            $servicesFromJson = json_decode($visit->selected_services, true) ?: [];
+        }
+        
+        // Add services from JSON data
+        if (!empty($servicesFromJson)) {
+            foreach ($servicesFromJson as $serviceData) {
+                $service = Service::find($serviceData['id']);
+                if ($service) {
+                    BillItem::create([
+                        'bill_id' => $bill->id,
+                        'service_id' => $service->id,
+                        'package_id' => null,
+                        'description' => $service->service_name,
+                        'quantity' => 1,
+                        'unit_price' => $serviceData['price'] ?? $service->price,
+                        'total_price' => $serviceData['price'] ?? $service->price,
+                        'item_type' => 'service',
+                        'notes' => 'Individual service from selection',
+                    ]);
+                }
+            }
+        }
+        
+        // Add services from relationship table (if any exist)
+        if ($visit->services()->exists()) {
             $services = $visit->services;
             
             foreach ($services as $patientService) {
@@ -160,7 +236,7 @@ class BillingService
                     'unit_price' => $patientService->service_price,
                     'total_price' => $patientService->service_price,
                     'item_type' => 'service',
-                    'notes' => 'Individual service billing',
+                    'notes' => 'Individual service from relationship',
                 ]);
             }
         }
@@ -198,5 +274,17 @@ class BillingService
             Log::error("Error creating missing bills: " . $e->getMessage());
             return 0;
         }
+    }
+    
+    /**
+     * Generate a unique bill number
+     */
+    private static function generateBillNumber(): string
+    {
+        do {
+            $billNumber = 'BILL-' . date('Y') . '-' . strtoupper(Str::random(6));
+        } while (Bill::where('bill_number', $billNumber)->exists());
+        
+        return $billNumber;
     }
 }

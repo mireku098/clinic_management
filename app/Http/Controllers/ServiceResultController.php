@@ -59,7 +59,9 @@ class ServiceResultController extends Controller
                 $service = Service::findOrFail($request->service_id);
                 $serviceId = $service->id;
                 $packageId = null;
-                $resultType = $service->result_type;
+                
+                // Use result_type from form, fallback to service default
+                $resultType = $request->result_type ?? $service->result_type;
                 
                 // Check for existing result
                 $existingResult = ServiceResult::where('patient_id', $patient->id)
@@ -97,7 +99,9 @@ class ServiceResultController extends Controller
                 $package = \App\Models\Package::findOrFail($request->package_id);
                 $serviceId = null;
                 $packageId = $package->id;
-                $resultType = 'text'; // Packages default to text
+                
+                // Use result_type from form, fallback to text for packages
+                $resultType = $request->result_type ?? 'text';
                 
                 // Check for existing result
                 $existingResult = ServiceResult::where('patient_id', $patient->id)
@@ -113,11 +117,30 @@ class ServiceResultController extends Controller
                     ], 403);
                 }
                 
+                // Create or find patient package record
+                $patientPackage = \App\Models\PatientPackage::where('patient_id', $patient->id)
+                    ->where('visit_id', $visit->id)
+                    ->where('package_id', $packageId)
+                    ->first();
+                
+                if (!$patientPackage) {
+                    $patientPackage = \App\Models\PatientPackage::create([
+                        'patient_id' => $patient->id,
+                        'visit_id' => $visit->id,
+                        'package_id' => $packageId,
+                        'package_price' => $package->price ?? 0,
+                        'status' => 'active',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+                
                 $patientServiceId = null;
             }
             
             // Validate based on result type
             $rules = [
+                'result_type' => 'required|in:text,numeric,file',
                 'status' => 'required|in:draft,pending_approval,approved,rejected',
                 'notes' => 'nullable|string|max:1000',
                 'recorded_at' => 'required|date',
@@ -142,6 +165,7 @@ class ServiceResultController extends Controller
                 'service_id' => $serviceId,
                 'package_id' => $packageId,
                 'patient_service_id' => $patientServiceId,
+                'patient_package_id' => isset($patientPackage) ? $patientPackage->id : null,
                 'result_type' => $resultType,
                 'status' => $request->status,
                 'notes' => $request->notes,
@@ -368,12 +392,56 @@ class ServiceResultController extends Controller
             }
         }
         
-        return view('service_results.patient_timeline', compact(
+        return view('service-results.patient_timeline', compact(
             'patient', 
             'serviceResults', 
             'visits', 
             'availableServices'
         ));
+    }
+
+    /**
+     * Show service result details for patient
+     */
+    public function showForPatient($patientId, $resultId)
+    {
+        try {
+            $result = ServiceResult::with(['service', 'package', 'patient', 'visit', 'recorder'])
+                ->where('id', $resultId)
+                ->where('patient_id', $patientId)
+                ->firstOrFail();
+            
+            return view('service-results.show', compact('result'));
+        } catch (\Exception $e) {
+            \Log::error('Error loading service result details: ' . $e->getMessage());
+            abort(404, 'Service Result not found');
+        }
+    }
+
+    /**
+     * Show edit form for patient service result
+     */
+    public function editForPatient($patientId, $resultId)
+    {
+        try {
+            $result = ServiceResult::with(['service', 'package', 'patient', 'visit'])
+                ->where('id', $resultId)
+                ->where('patient_id', $patientId)
+                ->firstOrFail();
+            
+            if (!$result->isEditable()) {
+                return back()->with('error', 'This result cannot be edited in its current status.');
+            }
+            
+            $services = Service::where('status', 'active')->get();
+            $patients = Patient::all();
+            $visits = PatientVisit::where('patient_id', $patientId)->latest()->get();
+            
+            return view('service-results.edit', compact('result', 'services', 'patients', 'visits'));
+        } catch (\Exception $e) {
+            \Log::error('Error loading edit form: ' . $e->getMessage());
+            abort(404, 'Service Result not found');
+        }
     }
 
     /**
@@ -575,8 +643,10 @@ class ServiceResultController extends Controller
         
         $patients = Patient::all();
         $visits = [];
+        $patient = null;
         
         if ($request->filled('patient_id')) {
+            $patient = Patient::find($request->patient_id);
             $visits = PatientVisit::where('patient_id', $request->patient_id)->latest()->get();
             
             // If we also have a specific visit_id, make sure it's included
@@ -588,7 +658,7 @@ class ServiceResultController extends Controller
             }
         }
         
-        return view('service-results.create', compact('services', 'patients', 'visits'));
+        return view('service-results.create', compact('services', 'patients', 'visits', 'patient'));
     }
 
     /**
@@ -689,7 +759,7 @@ class ServiceResultController extends Controller
      */
     public function edit($id)
     {
-        $result = ServiceResult::findOrFail($id);
+        $result = ServiceResult::with(['service', 'package', 'patient', 'visit'])->findOrFail($id);
         
         if (!$result->isEditable()) {
             return back()->with('error', 'This result cannot be edited in its current status.');
@@ -718,24 +788,44 @@ class ServiceResultController extends Controller
                 throw new \Exception('This result cannot be edited in its current status.');
             }
             
-            $validated = $request->validate([
-                'service_id' => 'required|exists:services,id',
+            $rules = [
                 'patient_id' => 'required|exists:patients,id',
                 'visit_id' => 'nullable|exists:patient_visits,id',
                 'result_type' => 'required|in:text,numeric,file',
                 'result_text' => 'required_if:result_type,text|nullable|string',
                 'result_numeric' => 'required_if:result_type,numeric|nullable|numeric',
                 'result_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+                'status' => 'required|in:draft,pending_approval,approved,rejected',
+                'recorded_at' => 'required|date',
                 'notes' => 'nullable|string',
-            ]);
+            ];
+            
+            // For package results, require package_id instead of service_id
+            if ($result->package_id) {
+                $rules['package_id'] = 'required|exists:packages,id';
+            } else {
+                $rules['service_id'] = 'required|exists:services,id';
+            }
+            
+            $validated = $request->validate($rules);
             
             $data = [
-                'service_id' => $validated['service_id'],
                 'patient_id' => $validated['patient_id'],
                 'visit_id' => $validated['visit_id'] ?? null,
                 'result_type' => $validated['result_type'],
+                'status' => $validated['status'],
+                'recorded_at' => \Carbon\Carbon::parse($validated['recorded_at']),
                 'notes' => $validated['notes'] ?? null,
             ];
+            
+            // Add service_id or package_id based on result type
+            if ($result->package_id) {
+                $data['package_id'] = $validated['package_id'];
+                $data['service_id'] = null;
+            } else {
+                $data['service_id'] = $validated['service_id'];
+                $data['package_id'] = null;
+            }
             
             // Handle result based on type
             if ($validated['result_type'] === 'text') {
@@ -771,7 +861,7 @@ class ServiceResultController extends Controller
                 ]);
             }
             
-            return redirect()->route('service-results.index')
+            return redirect()->route('patients.service-results', $result->patient_id)
                 ->with('swal', [
                     'icon' => 'success',
                     'title' => 'Success!',
@@ -929,5 +1019,50 @@ class ServiceResultController extends Controller
             
             return back()->with('error', 'Error processing approval: ' . $e->getMessage());
         }
+    }
+    
+    /**
+     * Show service results for a specific patient
+     */
+    public function patientResultsIndex($patientId): View
+    {
+        $patient = Patient::findOrFail($patientId);
+        $serviceResults = ServiceResult::with(['service', 'patient', 'visit'])
+            ->where('patient_id', $patientId)
+            ->latest()
+            ->get();
+        
+        // Debug: Log what we found
+        \Log::info('Patient Results Debug', [
+            'patient_id' => $patientId,
+            'patient_name' => $patient->first_name . ' ' . $patient->last_name,
+            'results_count' => $serviceResults->count(),
+            'results_data' => $serviceResults->toArray()
+        ]);
+            
+        return view('service-results.patient-index', compact('serviceResults', 'patient'));
+    }
+    
+    /**
+     * Show create form for patient service result
+     */
+    public function createForPatient($patientId)
+    {
+        $patient = Patient::findOrFail($patientId);
+        $services = Service::where('status', 'active')->get();
+        $visits = PatientVisit::where('patient_id', $patientId)
+            ->latest()
+            ->get();
+        
+        return view('service-results.create', compact('patient', 'services', 'visits'));
+    }
+    
+    /**
+     * Save service result for patient
+     */
+    public function saveForPatient(Request $request, $patientId)
+    {
+        // Use the same saveResult logic but with patient context
+        return $this->saveResult($request);
     }
 }

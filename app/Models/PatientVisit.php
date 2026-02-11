@@ -45,6 +45,9 @@ class PatientVisit extends Model
         'payment_status',
         'amount_paid',
         'balance_due',
+        'payment_method',
+        'payment_date',
+        'payment_reference',
     ];
 
     protected $casts = [
@@ -57,6 +60,7 @@ class PatientVisit extends Model
         'total_amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'balance_due' => 'decimal:2',
+        'payment_date' => 'date',
         'created_at' => 'datetime',
     ];
 

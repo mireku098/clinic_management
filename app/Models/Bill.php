@@ -19,6 +19,7 @@ class Bill extends Model
     public $timestamps = true;
 
     protected $fillable = [
+        'bill_number',
         'patient_id',
         'visit_id',
         'bill_type',

@@ -75,7 +75,7 @@ class ServiceResult extends Model
 
     public function isEditable()
     {
-        return in_array($this->status, ['draft', 'rejected']);
+        return in_array($this->status, ['draft', 'rejected', 'pending_approval']);
     }
 
     public function isApproved()

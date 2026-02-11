@@ -6,6 +6,7 @@ use App\Http\Requests\StorePatientRequest;
 use App\Models\Patient;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Throwable;
@@ -15,37 +16,35 @@ class PatientController extends Controller
     /**
      * Store a newly created patient in storage.
      */
-    public function store(StorePatientRequest $request): RedirectResponse
+    public function store(StorePatientRequest $request)
     {
         try {
             $data = $request->validated();
-
+            
+            // Calculate age and generate patient code
             $data['age'] = Carbon::parse($data['date_of_birth'])->age;
             $data['patient_code'] = $this->generatePatientCode();
             $data['registered_at'] = now();
 
-            // Handle photo upload
-            if ($request->hasFile('patient_photo')) {
-                $file = $request->file('patient_photo');
-                
-                if ($file->isValid()) {
-                    // Store the file and get the path
-                    $path = $file->store('patient-photos', 'public');
-                    $data['photo_path'] = $path;
-                } else {
-                    return back()
-                        ->withInput()
-                        ->with('swal', [
-                            'icon' => 'error',
-                            'title' => 'Photo Upload Failed',
-                            'text' => 'The uploaded file is not valid. Please try again.',
-                            'showConfirmButton' => true,
-                        ]);
-                }
+            // Handle photo upload (optional)
+            if ($request->hasFile('patient_photo') && $request->file('patient_photo')->isValid()) {
+                $path = $request->file('patient_photo')->store('patient-photos', 'public');
+                $data['photo_path'] = $path;
             }
 
-            Patient::create($data);
+            // Create patient
+            $patient = Patient::create($data);
 
+            // Check if this is an AJAX request
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Patient registered successfully!',
+                    'patient_id' => $patient->id
+                ]);
+            }
+
+            // Traditional redirect for non-AJAX requests
             return redirect()
                 ->route('patients')
                 ->with('swal', [
@@ -53,15 +52,46 @@ class PatientController extends Controller
                     'title' => 'Patient Registered',
                     'text' => 'Patient record has been created successfully.',
                 ]);
-        } catch (Throwable $exception) {
-            report($exception);
-
+                
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle database errors specifically
+            \Log::error('Database error in patient creation: ' . $e->getMessage());
+            
+            // Check if this is an AJAX request
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Database error: ' . $e->getMessage()
+                ], 422);
+            }
+            
             return back()
                 ->withInput()
                 ->with('swal', [
                     'icon' => 'error',
-                    'title' => 'Unable to Register',
-                    'text' => 'An unexpected error occurred. Please try again.',
+                    'title' => 'Database Error',
+                    'text' => 'Could not save patient information. Please check your data and try again.',
+                    'showConfirmButton' => true,
+                ]);
+                
+        } catch (\Exception $e) {
+            // Handle other errors
+            \Log::error('General error in patient creation: ' . $e->getMessage());
+            
+            // Check if this is an AJAX request
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error: ' . $e->getMessage()
+                ], 422);
+            }
+            
+            return back()
+                ->withInput()
+                ->with('swal', [
+                    'icon' => 'error',
+                    'title' => 'Registration Failed',
+                    'text' => 'An error occurred while creating the patient. Please try again.',
                     'showConfirmButton' => true,
                 ]);
         }
@@ -153,7 +183,7 @@ class PatientController extends Controller
     {
         try {
             $patient = Patient::findOrFail($patientId);
-            $visits = $patient->visits()->latest()->get(['id', 'created_at']);
+            $visits = $patient->visits()->latest()->get(['id', 'visit_date', 'visit_time', 'created_at']);
             
             return response()->json([
                 'success' => true,
@@ -164,6 +194,20 @@ class PatientController extends Controller
                 'success' => false,
                 'message' => 'Error loading visits: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Display the specified patient.
+     */
+    public function show($id)
+    {
+        try {
+            $patient = Patient::findOrFail($id);
+            return view('patients.show', compact('patient'));
+        } catch (\Exception $e) {
+            \Log::error('Error loading patient details: ' . $e->getMessage());
+            abort(404, 'Patient not found');
         }
     }
 
