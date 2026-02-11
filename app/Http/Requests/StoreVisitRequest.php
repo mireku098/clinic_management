@@ -18,8 +18,12 @@ class StoreVisitRequest extends FormRequest
             'patient_id' => ['required', 'exists:patients,id'],
             'visit_date' => ['required', 'date', 'before_or_equal:today'],
             'visit_time' => ['required', 'date_format:H:i:s'],
-            'visit_type' => ['required', 'in:appointment,walk-in'],
-            'practitioner' => ['required', 'in:dr-smith,dr-johnson,dr-williams,therapist-brown,therapist-davis'],
+            'visit_type' => ['required', 'in:appointment,walk-in,telemedicine'],
+            'practitioner' => ['required', 'in:dr-smith,dr-johnson,dr-williams,therapist-brown,therapist-davis,nurse-jones'],
+            
+            // User fields (auto-filled)
+            'user_id' => ['nullable', 'exists:users,id'],
+            'attended_by' => ['nullable', 'string', 'max:255'],
             
             // Optional fields
             'department' => ['nullable', 'in:general,physiotherapy,consultation,emergency'],

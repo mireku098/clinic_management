@@ -16,6 +16,7 @@ class PatientVisit extends Model
 
     protected $fillable = [
         'patient_id',
+        'user_id',
         'chief_complaint',
         'history_present_illness',
         'assessment',
@@ -23,6 +24,7 @@ class PatientVisit extends Model
         'visit_date',
         'visit_time',
         'visit_type',
+        'status',
         'practitioner',
         'department',
         'temperature',
@@ -69,9 +71,9 @@ class PatientVisit extends Model
         return $this->belongsTo(Patient::class, 'patient_id');
     }
 
-    public function attendingUser()
+    public function user()
     {
-        return $this->belongsTo(User::class, 'attended_by');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function services()
@@ -82,6 +84,60 @@ class PatientVisit extends Model
     public function package()
     {
         return $this->belongsTo(Package::class, 'package_id');
+    }
+
+    /**
+     * Check if visit can be marked as completed
+     * A visit is completed only if all associated services and packages are approved
+     */
+    public function canBeMarkedAsCompleted()
+    {
+        // Check if there are any associated service results that are not approved
+        $serviceResults = $this->services()->with('result')->get();
+        
+        foreach ($serviceResults as $service) {
+            if ($service->result && $service->result->status !== 'approved') {
+                return false;
+            }
+        }
+        
+        // Check if package (if any) is approved
+        if ($this->package) {
+            $packageResults = \App\Models\ServiceResult::where('visit_id', $this->id)
+                ->where('package_id', $this->package_id)
+                ->get();
+                
+            foreach ($packageResults as $result) {
+                if ($result->status !== 'approved') {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Update visit status based on associated service/package approval status
+     */
+    public function updateCompletionStatus()
+    {
+        $newStatus = $this->canBeMarkedAsCompleted() ? 'completed' : 'pending';
+        
+        if ($this->status !== $newStatus) {
+            $this->status = $newStatus;
+            $this->save();
+            
+            // Log the status change
+            \Log::info("Visit {$this->id} status updated to {$newStatus}", [
+                'patient_id' => $this->patient_id,
+                'visit_date' => $this->visit_date,
+                'previous_status' => $this->getOriginal('status'),
+                'new_status' => $newStatus
+            ]);
+        }
+        
+        return $newStatus;
     }
 
     public function bill()

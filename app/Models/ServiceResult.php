@@ -73,6 +73,11 @@ class ServiceResult extends Model
         return $this->belongsTo(PatientPackage::class);
     }
 
+    public function patientService()
+    {
+        return $this->belongsTo(PatientService::class);
+    }
+
     public function isEditable()
     {
         return in_array($this->status, ['draft', 'rejected', 'pending_approval']);

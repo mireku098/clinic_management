@@ -16,7 +16,8 @@ class Package extends Model
         'duration_weeks',
         'total_cost',
         'status',
-        'package_code'
+        'package_code',
+        'result_type'
     ];
 
     protected $casts = [

@@ -78,7 +78,7 @@ class ServiceResultController extends Controller
                 }
                 
                 // Create patient_service record if needed
-                $patientService = \App\Models\PatientService::where('patient_id', $patient->id)
+                $patientService = PatientService::where('patient_id', $patient->id)
                     ->where('visit_id', $visit->id)
                     ->where('service_id', $serviceId)
                     ->first();

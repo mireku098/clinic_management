@@ -35,6 +35,7 @@ class PackageController extends Controller
             $package->update([
                 'package_name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                'result_type' => $validated['resultType'],
                 'duration_weeks' => $validated['totalWeeks'],
                 'total_cost' => $this->calculateTotalCost($validated['services']),
                 'status' => $validated['status'],
@@ -188,6 +189,7 @@ class PackageController extends Controller
         return $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'resultType' => 'required|in:text,numeric,file',
             'durationValue' => 'required|integer|min:1',
             'durationType' => 'required|in:weeks,months',
             'totalWeeks' => 'required|integer|min:1',
@@ -244,6 +246,7 @@ class PackageController extends Controller
         return Package::create([
             'package_name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'result_type' => $validated['resultType'],
             'duration_weeks' => $validated['totalWeeks'],
             'total_cost' => $calculatedTotalCost,
             'status' => $validated['status'],

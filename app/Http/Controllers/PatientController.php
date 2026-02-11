@@ -14,6 +14,23 @@ use Throwable;
 class PatientController extends Controller
 {
     /**
+     * Display a listing of patients.
+     */
+    public function index()
+    {
+        $patients = Patient::latest()->get();
+        return view('patients', compact('patients'));
+    }
+
+    /**
+     * Show the form for creating a new patient.
+     */
+    public function create()
+    {
+        return view('patients.add');
+    }
+
+    /**
      * Store a newly created patient in storage.
      */
     public function store(StorePatientRequest $request)

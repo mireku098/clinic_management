@@ -19,7 +19,7 @@ class VisitController extends Controller
     {
         \Log::info('VisitController index method called');
         
-        $query = PatientVisit::with(['patient', 'attendingUser', 'services.service', 'package']);
+        $query = PatientVisit::with(['patient', 'user', 'services.service', 'package']);
         
         // Search by patient name or code
         if (request()->filled('patient_search')) {
@@ -41,10 +41,9 @@ class VisitController extends Controller
             $query->where('visit_type', request('visit_type'));
         }
         
-        // Filter by status (for now, all visits are 'completed')
+        // Filter by status
         if (request()->filled('status_filter') && request('status_filter') !== '') {
-            // Status filtering logic can be added here when status field is implemented
-            // For now, all visits show as completed
+            $query->where('status', request('status_filter'));
         }
         
         $visits = $query->orderBy('visit_date', 'desc')
@@ -59,7 +58,7 @@ class VisitController extends Controller
 
     public function show($id): View
     {
-        $visit = PatientVisit::with(['patient', 'attendingUser', 'services.service'])
+        $visit = PatientVisit::with(['patient', 'user', 'services.service'])
             ->findOrFail($id);
             
         // Ensure dates are Carbon instances
@@ -122,6 +121,11 @@ class VisitController extends Controller
         try {
             $data = $request->validated();
             
+            // Add user_id and attended_by from authenticated user
+            $data['user_id'] = auth()->id();
+            $data['attended_by'] = auth()->user()->name ?? 'System';
+            $data['status'] = 'pending'; // Default status for new visits
+            
             // Auto-calculate BMI if weight and height provided
             if (isset($data['weight']) && isset($data['height']) && $data['weight'] && $data['height']) {
                 $heightInMeters = $data['height'] / 100;
@@ -150,14 +154,90 @@ class VisitController extends Controller
                 $packageData = json_decode($selectedPackage, true);
                 if ($packageData && isset($packageData['id'])) {
                     $visit->update(['package_id' => $packageData['id']]);
+                    
+                    // Create PatientPackage record
+                    $patientPackage = \App\Models\PatientPackage::create([
+                        'patient_id' => $visit->patient_id,
+                        'visit_id' => $visit->id,
+                        'package_id' => $packageData['id'],
+                        'package_price' => $packageData['price'] ?? 0,
+                        'status' => 'pending'
+                    ]);
+                    
+                    // Create ServiceResult record for package
+                    \App\Models\ServiceResult::create([
+                        'patient_id' => $visit->patient_id,
+                        'visit_id' => $visit->id,
+                        'service_id' => null,
+                        'patient_service_id' => null,
+                        'package_id' => $packageData['id'],
+                        'patient_package_id' => $patientPackage->id,
+                        'result_type' => $packageData['result_type'] ?? 'text',
+                        'result_text' => null,
+                        'result_numeric' => null,
+                        'result_file_path' => null,
+                        'result_file_name' => null,
+                        'notes' => null,
+                        'status' => 'pending_approval',
+                        'recorded_by' => auth()->id(),
+                        'approved_by' => null,
+                        'approved_at' => null
+                    ]);
+                }
+            }
+            
+            // Create PatientService records for selected services
+            if ($selectedServices) {
+                $servicesData = json_decode($selectedServices, true);
+                if ($servicesData && is_array($servicesData)) {
+                    foreach ($servicesData as $serviceData) {
+                        if (isset($serviceData['id']) && isset($serviceData['price'])) {
+                            $patientService = PatientService::create([
+                                'patient_id' => $visit->patient_id,
+                                'visit_id' => $visit->id,
+                                'service_id' => $serviceData['id'],
+                                'service_price' => $serviceData['price'],
+                                'status' => 'pending'
+                            ]);
+                            
+                            // Create corresponding ServiceResult record
+                            \App\Models\ServiceResult::create([
+                                'patient_id' => $visit->patient_id,
+                                'visit_id' => $visit->id,
+                                'service_id' => $serviceData['id'],
+                                'patient_service_id' => $patientService->id,
+                                'package_id' => null,
+                                'result_type' => $serviceData['result_type'] ?? 'text',
+                                'result_text' => null,
+                                'result_numeric' => null,
+                                'result_file_path' => null,
+                                'result_file_name' => null,
+                                'notes' => null,
+                                'status' => 'pending_approval',
+                                'recorded_by' => auth()->id(),
+                                'approved_by' => null,
+                                'approved_at' => null
+                            ]);
+                            
+                            // Manually trigger visit completion check after creating service result
+                            $visit->fresh()->updateCompletionStatus();
+                        }
+                    }
                 }
             }
             
             // Auto-create bill for this visit
             try {
+                \Log::info("Attempting to create bill for visit {$visit->id}", [
+                    'package_id' => $visit->package_id,
+                    'selected_services' => $visit->selected_services,
+                    'total_amount' => $visit->total_amount,
+                    'package_exists' => $visit->package_id ? ($visit->package ? true : false) : false
+                ]);
+                
                 BillingService::createOrUpdateBillForVisit($visit);
                 \Log::info("Bill created for visit {$visit->id}");
-            } catch (\Exception $e) {
+            } catch (Throwable $e) {
                 \Log::error("Failed to create bill for visit {$visit->id}: " . $e->getMessage());
                 // Continue with visit creation even if bill creation fails
             }
@@ -173,7 +253,7 @@ class VisitController extends Controller
             return redirect()->route('visits')
                 ->with('success', 'Visit created successfully!');
                 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             \Log::error('Error creating visit: ' . $e->getMessage());
             
             if ($isAjax) {
