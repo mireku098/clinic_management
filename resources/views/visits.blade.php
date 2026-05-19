@@ -49,7 +49,7 @@
             <i class="fas fa-clock"></i>
           </div>
           <div class="stat-details">
-            <h3>{{ \App\Models\PatientVisit::whereNull('attended_by')->count() }}</h3>
+            <h3>{{ \App\Models\PatientVisit::where('status', 'pending')->count() }}</h3>
             <p>Pending</p>
           </div>
         </div>
@@ -84,7 +84,7 @@
                   class="form-control"
                   id="patient_search"
                   name="patient_search"
-                  placeholder="Search by name or code..."
+                  placeholder="Search by name, code, or phone..."
                   value="{{ request('patient_search') }}"
                 />
               </div>
@@ -108,7 +108,6 @@
                 <option value="">All Status</option>
                 <option value="completed" {{ request('status_filter') == 'completed' ? 'selected' : '' }}>Completed</option>
                 <option value="pending" {{ request('status_filter') == 'pending' ? 'selected' : '' }}>Pending</option>
-                <option value="cancelled" {{ request('status_filter') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
               </select>
             </div>
             <div class="col-md-3">
@@ -156,8 +155,9 @@
                 <th>Type</th>
                 <th>Services & Packages</th>
                 <th>Vital Signs</th>
+                <th>Status</th>
+                <th>Payment Status</th>
                 <th>Attended By</th>
-                <!-- <th>Status</th> -->
                 <th>Actions</th>
               </tr>
             </thead>
@@ -230,14 +230,24 @@
                       @if($visit->temperature)
                         <div><i class="fas fa-thermometer-half text-info me-1"></i> {{ $visit->temperature }}°C</div>
                       @endif
-                      @if($visit->heart_rate)
-                        <div><i class="fas fa-heartbeat text-danger me-1"></i> {{ $visit->heart_rate }}</div>
+                      @if($visit->pulse_rate)
+                        <div><i class="fas fa-heartbeat text-danger me-1"></i> {{ $visit->pulse_rate }} bpm</div>
                       @endif
                     </div>
                   </td>
                   <td>
-                    @if($visit->attendingUser)
-                      {{ $visit->attendingUser->name }}
+                    <span class="badge bg-{{ $visit->status == 'completed' ? 'success' : 'warning' }}">
+                      {{ ucfirst($visit->status) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-{{ $visit->payment_status == 'paid' ? 'success' : ($visit->payment_status == 'partial' ? 'warning' : 'danger') }}">
+                      {{ ucfirst(str_replace('_', ' ', $visit->payment_status)) }}
+                    </span>
+                  </td>
+                  <td>
+                    @if($visit->attended_by)
+                      {{ $visit->attended_by }}
                     @else
                       <span class="text-muted">Not assigned</span>
                     @endif
@@ -266,7 +276,7 @@
                 @endforeach
               @else
                 <tr>
-                  <td colspan="10" class="text-center py-4">
+                  <td colspan="11" class="text-center py-4">
                     <div class="text-muted">
                       <i class="fas fa-calendar-times fa-2x mb-2"></i>
                       <p>No visit records found</p>
@@ -311,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function deleteVisit(visitId) {
     Swal.fire({
         title: 'Delete Visit?',
-        text: 'Are you sure you want to delete this visit record? This action cannot be undone.',
+        text: 'Are you sure you want to delete this visit record?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',

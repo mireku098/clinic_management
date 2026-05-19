@@ -85,6 +85,16 @@
                                             {{ $selectedService->service_name ?? 'Unknown' }} - {{ ucfirst($selectedService->category ?? 'unknown') }}
                                         </div>
                                         <input type="hidden" name="service_id" value="{{ request('service_id') }}">
+                                        <input type="hidden" id="service_result_type" value="{{ $selectedService->result_type ?? 'text' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Result Type</label>
+                                        <div class="form-control">
+                                            <i class="fas fa-cog me-2"></i>
+                                            {{ ucfirst($selectedService->result_type ?? 'text') }}
+                                            <small class="text-muted">(Auto-detected from service)</small>
+                                        </div>
+                                        <input type="hidden" name="result_type" value="{{ $selectedService->result_type ?? 'text' }}">
                                     </div>
                                 @else
                                     <div class="col-md-12">
@@ -113,6 +123,15 @@
                                             {{ $selectedPackage->package_name }}
                                         </div>
                                         <input type="hidden" name="package_id" value="{{ request('package_id') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="result_type" class="form-label">Result Type *</label>
+                                        <select class="form-select" id="result_type" name="result_type" required>
+                                            <option value="">Select Result Type</option>
+                                            <option value="text">Text</option>
+                                            <option value="numeric">Numeric</option>
+                                            <option value="file">File Upload</option>
+                                        </select>
                                     </div>
                                 @else
                                     <div class="col-md-12">
@@ -156,62 +175,16 @@
                                         </select>
                                     </div>
                                 </div>
-                            @endif
-                            @if(request('visit_id'))
-                                <!-- Pre-filled visit info -->
-                                @php 
-                                    $debugVisitId = request('visit_id');
-                                    $selectedVisit = $visits->where('id', $debugVisitId)->first();
-                                    // Debug info
-                                    $availableVisitIds = $visits->pluck('id')->toArray();
-                                @endphp
-                                @if($selectedVisit)
-                                    <div class="col-md-6">
-                                        <label class="form-label">Visit</label>
-                                        <div class="form-control">
-                                            <i class="fas fa-calendar me-2"></i>
-                                            Visit #{{ $selectedVisit->id }} - {{ $selectedVisit->visit_date ? $selectedVisit->visit_date->format('M d, Y') : 'No date' }} @ {{ $selectedVisit->visit_time ? $selectedVisit->visit_time->format('H:i') : 'No time' }}
-                                        </div>
-                                        <input type="hidden" name="visit_id" value="{{ request('visit_id') }}">
-                                    </div>
-                                @else
-                                    <div class="col-md-12">
-                                        <div class="alert alert-danger">
-                                            <i class="fas fa-exclamation-triangle me-2"></i>
-                                            Visit with ID {{ request('visit_id') }} not found.
-                                            <br>
-                                            <small>Looking for visit ID: {{ $debugVisitId }}</small>
-                                            <br>
-                                            <small>Available visit IDs: {{ implode(', ', $availableVisitIds) }}</small>
-                                            <br>
-                                            <small>Total visits loaded: {{ $visits->count() }}</small>
-                                        </div>
-                                    </div>
-                                @endif
-                            @else
-                                <!-- Visit selection dropdown -->
                                 <div class="col-md-6">
-                                    <label for="visit_id" class="form-label">Visit (Optional)</label>
-                                    <select class="form-select" id="visit_id" name="visit_id">
-                                        <option value="">Select Visit</option>
-                                        @foreach($visits as $visit)
-                                            <option value="{{ $visit->id }}" {{ request('visit_id') == $visit->id ? 'selected' : '' }}>
-                                                Visit #{{ $visit->id }} - {{ $visit->created_at ? $visit->created_at->format('M d, Y H:i') : 'No date' }}
-                                            </option>
-                                        @endforeach
+                                    <label for="result_type" class="form-label">Result Type *</label>
+                                    <select class="form-select" id="result_type" name="result_type" required>
+                                        <option value="">Select Result Type</option>
+                                        <option value="text">Text</option>
+                                        <option value="numeric">Numeric</option>
+                                        <option value="file">File Upload</option>
                                     </select>
-                                    <small class="text-muted">Select a visit if this result is related to a specific visit</small>
                                 </div>
                             @endif
-                            <div class="col-md-6">
-                                <label for="result_type" class="form-label">Result Type *</label>
-                                <select class="form-select" id="result_type" name="result_type" required>
-                                    <option value="">Select Result Type</option>
-                                    <option value="text">Text</option>
-                                    <option value="numeric">Numeric</option>
-                                    <option value="file">File Upload</option>
-                                </select>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -451,20 +424,23 @@ document.getElementById("add_result_form").addEventListener("submit", function(e
     });
 });
 
-// Result type switching
-document.getElementById('result_type').addEventListener('change', function() {
-    const resultType = this.value;
-    
-    // Hide all result sections
-    document.querySelectorAll('.result-section').forEach(section => {
-        section.style.display = 'none';
+// Result type switching (only if result_type is a select element)
+const resultTypeElement = document.getElementById('result_type');
+if (resultTypeElement && resultTypeElement.tagName === 'SELECT') {
+    resultTypeElement.addEventListener('change', function() {
+        const resultType = this.value;
+        
+        // Hide all result sections
+        document.querySelectorAll('.result-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        
+        // Show selected result section
+        if (resultType) {
+            document.getElementById(resultType + '_result_section').style.display = 'block';
+        }
     });
-    
-    // Show selected result section
-    if (resultType) {
-        document.getElementById(resultType + '_result_section').style.display = 'block';
-    }
-});
+}
 
 // Set default values for status and recorded_at
 document.addEventListener('DOMContentLoaded', function() {
@@ -482,40 +458,59 @@ document.addEventListener('DOMContentLoaded', function() {
         recordedAtInput.value = now.toISOString().slice(0, 16);
     }
     
-    // Handle pre-selected service from URL
-    const serviceSelect = document.getElementById('service_id');
-    if (serviceSelect && serviceSelect.value) {
-        // Trigger change event to set result type
-        serviceSelect.dispatchEvent(new Event('change'));
+    // Handle pre-selected service from URL - auto-load result type section
+    const serviceResultType = document.getElementById('service_result_type');
+    if (serviceResultType && serviceResultType.value) {
+        // Show the appropriate result section based on service's result_type
+        showResultSection(serviceResultType.value);
     }
     
     // Handle pre-selected result type from URL or service default
     const resultTypeSelect = document.getElementById('result_type');
     if (resultTypeSelect && resultTypeSelect.value) {
         // Trigger change event to show appropriate section
-        resultTypeSelect.dispatchEvent(new Event('change'));
+        showResultSection(resultTypeSelect.value);
+    }
+    
+    // Handle service selection change for dropdown mode
+    const serviceSelect = document.getElementById('service_id');
+    if (serviceSelect) {
+        serviceSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const resultType = selectedOption.getAttribute('data-result-type');
+            
+            if (resultType) {
+                const resultTypeSelect = document.getElementById('result_type');
+                if (resultTypeSelect) {
+                    resultTypeSelect.value = resultType;
+                    showResultSection(resultType);
+                }
+            }
+        });
+        
+        // Trigger change event if service is already selected
+        if (serviceSelect.value) {
+            serviceSelect.dispatchEvent(new Event('change'));
+        }
     }
 });
 
-// Service/Package selection - auto-set result type
-document.getElementById('service_id').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const resultType = selectedOption.getAttribute('data-result-type');
-    const isService = selectedOption.getAttribute('data-is-service') === 'true';
-    
-    if (resultType) {
-        document.getElementById('result_type').value = resultType;
-        document.getElementById('result_type').dispatchEvent(new Event('change'));
-    }
-    
-    // Update visual indicator based on selection
-    const selectElement = this;
-    if (isService) {
-        selectElement.style.borderColor = '#007bff'; // Blue for services
-    } else {
-        selectElement.style.borderColor = '#28a745'; // Green for packages
-    }
-});
+// Service/Package selection - auto-set result type (only for dropdown mode)
+const serviceIdElement = document.getElementById('service_id');
+if (serviceIdElement) {
+    serviceIdElement.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const resultType = selectedOption.getAttribute('data-result-type');
+        
+        if (resultType) {
+            const resultTypeSelect = document.getElementById('result_type');
+            if (resultTypeSelect) {
+                resultTypeSelect.value = resultType;
+                showResultSection(resultType);
+            }
+        }
+    });
+}
 
 // Patient selection - load visits
 document.getElementById('patient_id').addEventListener('change', function() {
@@ -574,6 +569,21 @@ document.getElementById('result_file').addEventListener('change', function() {
 function clearFile() {
     document.getElementById('result_file').value = '';
     document.getElementById('file_preview').style.display = 'none';
+}
+
+function showResultSection(resultType) {
+    // Hide all result sections
+    document.querySelectorAll('.result-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show the selected result section
+    if (resultType) {
+        const targetSection = document.getElementById(resultType + '_result_section');
+        if (targetSection) {
+            targetSection.style.display = 'block';
+        }
+    }
 }
 </script>
 @endsection

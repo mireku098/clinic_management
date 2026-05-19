@@ -38,6 +38,23 @@
                                 <label for="packageDescription" class="form-label">Description</label>
                                 <textarea class="form-control" id="packageDescription" name="packageDescription" rows="3"></textarea>
                             </div>
+                            <div class="col-md-6">
+                                <label for="resultType" class="form-label">Result Type *</label>
+                                <select class="form-select" id="resultType" name="resultType" required>
+                                    <option value="">Select Result Type</option>
+                                    <option value="text">Text</option>
+                                    <option value="numeric">Numeric</option>
+                                    <option value="file">File Upload</option>
+                                </select>
+                                <small class="text-muted">Default result type for services in this package</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">Status *</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -558,6 +575,7 @@ document.getElementById("addPackageForm").addEventListener("submit", function(e)
     const packageData = {
         name: document.getElementById("packageName").value,
         description: document.getElementById("packageDescription").value,
+        resultType: document.getElementById("resultType").value,
         durationValue: document.getElementById("durationValue").value,
         durationType: document.getElementById("durationType").value,
         totalWeeks: document.getElementById("totalWeeks").value,
@@ -667,6 +685,7 @@ function saveAsDraft() {
     const packageData = {
         name: document.getElementById("packageName").value,
         description: document.getElementById("packageDescription").value,
+        resultType: document.getElementById("resultType").value,
         durationValue: document.getElementById("durationValue").value,
         durationType: document.getElementById("durationType").value,
         services: services.map(s => ({
@@ -695,6 +714,7 @@ window.addEventListener("load", function() {
         const packageData = JSON.parse(draft);
         document.getElementById("packageName").value = packageData.name || '';
         document.getElementById("packageDescription").value = packageData.description || '';
+        document.getElementById("resultType").value = packageData.resultType || 'text';
         document.getElementById("durationValue").value = packageData.durationValue || '';
         document.getElementById("durationType").value = packageData.durationType || 'weeks';
         document.getElementById("packageCategory").value = packageData.category || '';

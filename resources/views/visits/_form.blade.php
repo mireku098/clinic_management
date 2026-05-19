@@ -67,32 +67,45 @@
                     <label for="visit_type" class="form-label">Visit Type</label>
                     <select class="form-select" id="visit_type" name="visit_type" required>
                         <option value="">Select Type</option>
-                        <option value="appointment" {{ (isset($visit) && $visit->visit_type == 'appointment') || old('visit_type') == 'appointment' ? 'selected' : '' }}>Appointment</option>
-                        <option value="walk-in" {{ (isset($visit) && $visit->visit_type == 'walk-in') || old('visit_type') == 'walk-in' ? 'selected' : '' }}>Walk-in</option>
+                        @if(isset($visit) && $visit->visit_type === 'appointment')
+                        <option value="appointment" selected>Appointment (checked in)</option>
+                        @endif
+                        <option value="walk-in" {{ (isset($visit) && $visit->visit_type == 'walk-in') || old('visit_type', 'walk-in') == 'walk-in' ? 'selected' : '' }}>Walk-in</option>
+                        <option value="telemedicine" {{ (isset($visit) && $visit->visit_type == 'telemedicine') || old('visit_type') == 'telemedicine' ? 'selected' : '' }}>Telemedicine</option>
                     </select>
+                    @if(!isset($visit))
+                    <small class="text-muted">To book a future visit, use <a href="{{ route('appointments.add') }}">Schedule Appointment</a>.</small>
+                    @endif
                 </div>
             </div>
+            @php
+                $selectedPractitioners = old('practitioner', isset($visit) ? $visit->practitioner : []);
+                $selectedDepartments = old('department', isset($visit) ? $visit->department : []);
+                if (!is_array($selectedPractitioners)) {
+                    $selectedPractitioners = $selectedPractitioners ? [$selectedPractitioners] : [];
+                }
+                if (!is_array($selectedDepartments)) {
+                    $selectedDepartments = $selectedDepartments ? [$selectedDepartments] : [];
+                }
+            @endphp
             <div class="row g-3 mt-2">
                 <div class="col-md-6">
-                    <label for="practitioner" class="form-label">Practitioner</label>
-                    <select class="form-select" id="practitioner" name="practitioner" required>
-                        <option value="">Select Practitioner</option>
-                        <option value="dr-smith" {{ (isset($visit) && $visit->practitioner == 'dr-smith') || old('practitioner') == 'dr-smith' ? 'selected' : '' }}>Dr. Smith</option>
-                        <option value="dr-johnson" {{ (isset($visit) && $visit->practitioner == 'dr-johnson') || old('practitioner') == 'dr-johnson' ? 'selected' : '' }}>Dr. Johnson</option>
-                        <option value="dr-williams" {{ (isset($visit) && $visit->practitioner == 'dr-williams') || old('practitioner') == 'dr-williams' ? 'selected' : '' }}>Dr. Williams</option>
-                        <option value="therapist-brown" {{ (isset($visit) && $visit->practitioner == 'therapist-brown') || old('practitioner') == 'therapist-brown' ? 'selected' : '' }}>Therapist Brown</option>
-                        <option value="therapist-davis" {{ (isset($visit) && $visit->practitioner == 'therapist-davis') || old('practitioner') == 'therapist-davis' ? 'selected' : '' }}>Therapist Davis</option>
+                    <label for="practitioner" class="form-label">Practitioner(s) <span class="text-danger">*</span></label>
+                    <select class="form-select visit-multi-select" id="practitioner" name="practitioner[]" multiple required>
+                        @foreach(config('clinic.practitioners', []) as $value => $label)
+                            <option value="{{ $value }}" {{ in_array($value, $selectedPractitioners ?? [], true) ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
                     </select>
+                    <small class="text-muted">Select one or more practitioners</small>
                 </div>
                 <div class="col-md-6">
-                    <label for="department" class="form-label">Department</label>
-                    <select class="form-select" id="department" name="department">
-                        <option value="">Select Department</option>
-                        <option value="general" {{ (isset($visit) && $visit->department == 'general') || old('department') == 'general' ? 'selected' : '' }}>General</option>
-                        <option value="physiotherapy" {{ (isset($visit) && $visit->department == 'physiotherapy') || old('department') == 'physiotherapy' ? 'selected' : '' }}>Physiotherapy</option>
-                        <option value="consultation" {{ (isset($visit) && $visit->department == 'consultation') || old('department') == 'consultation' ? 'selected' : '' }}>Consultation</option>
-                        <option value="emergency" {{ (isset($visit) && $visit->department == 'emergency') || old('department') == 'emergency' ? 'selected' : '' }}>Emergency</option>
+                    <label for="department" class="form-label">Department(s)</label>
+                    <select class="form-select visit-multi-select" id="department" name="department[]" multiple>
+                        @foreach(config('clinic.departments', []) as $value => $label)
+                            <option value="{{ $value }}" {{ in_array($value, $selectedDepartments ?? [], true) ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
                     </select>
+                    <small class="text-muted">Select one or more departments (optional)</small>
                 </div>
             </div>
         </div>
@@ -235,18 +248,9 @@
                 </div>
                 <div class="col-md-3">
                     <div class="mb-3">
-                        <label for="heart_rate" class="form-label">Heart Rate</label>
-                        <input type="number" class="form-control" id="heart_rate" name="heart_rate"
-                            placeholder="72" value="{{ isset($visit) ? $visit->heart_rate : old('heart_rate') }}" />
-                        <!-- <small class="text-muted">No range restrictions</small> -->
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="mb-3">
-                        <label for="pulse_rate" class="form-label">Pulse Rate</label>
+                        <label for="pulse_rate" class="form-label">Pulse Rate (bpm)</label>
                         <input type="number" class="form-control" id="pulse_rate" name="pulse_rate"
                             placeholder="72" value="{{ isset($visit) ? $visit->pulse_rate : old('pulse_rate') }}" />
-                        <!-- <small class="text-muted">No range restrictions</small> -->
                     </div>
                 </div>
             </div>
@@ -321,16 +325,6 @@
                         <i class="fas fa-save me-2"></i>
                         {{ isset($visit) ? 'Save Changes' : 'Record Visit' }}
                     </button>
-                    @if(!isset($visit))
-                    <button type="button" class="btn btn-outline-secondary" onclick="saveAsDraft()">
-                        <i class="fas fa-save me-2"></i>
-                        Save Draft
-                    </button>
-                    <button type="button" class="btn btn-outline-warning" onclick="clearDraft()">
-                        <i class="fas fa-trash me-2"></i>
-                        Clear Draft
-                    </button>
-                    @endif
                 </div>
             </div>
         </div>
@@ -338,44 +332,245 @@
 </form>
 
 <script>
+// Real-time form validation
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery('.visit-multi-select').select2({
+            width: '100%',
+            placeholder: 'Select option(s)',
+            allowClear: true,
+            closeOnSelect: false
+        }).on('change', function () {
+            validateField(this);
+        });
+    }
+
+    const requiredFields = [
+        "patient_id",
+        "visit_date",
+        "visit_time",
+        "visit_type",
+        "practitioner"
+    ];
+
+    requiredFields.forEach((fieldId) => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            // Special handling for hidden patient_id
+            if (field.type === 'hidden') {
+                // We'll validate this on form submit
+                return;
+            }
+
+            // Validate on blur
+            field.addEventListener("blur", function () {
+                validateField(this);
+            });
+            // Real-time feedback after initial attempt
+            field.addEventListener("input", function () {
+                if (this.classList.contains("is-invalid") || this.classList.contains("is-valid")) {
+                    validateField(this);
+                }
+            });
+            field.addEventListener("change", function () {
+                if (this.classList.contains("is-invalid") || this.classList.contains("is-valid")) {
+                    validateField(this);
+                }
+            });
+        }
+    });
+
+    // Blood Pressure validation
+    const bpField = document.getElementById("blood_pressure");
+    if (bpField) {
+        bpField.addEventListener("blur", function () {
+            validateBP(this);
+        });
+        bpField.addEventListener("input", function () {
+            if (this.classList.contains("is-invalid") || this.classList.contains("is-valid")) {
+                validateBP(this);
+            }
+        });
+    }
+});
+
+function getFieldLabel(field) {
+    const label = document.querySelector(`label[for="${field.id}"]`);
+    if (label) return label.textContent.replace('*', '').trim();
+    
+    // Fallback labels for visit fields
+    const labels = {
+        'patient_id': 'Patient',
+        'visit_date': 'Visit Date',
+        'visit_time': 'Visit Time',
+        'visit_type': 'Visit Type',
+        'practitioner': 'Practitioner(s)',
+        'blood_pressure': 'Blood Pressure',
+        'temperature': 'Temperature',
+        'weight': 'Weight'
+    };
+    return labels[field.id] || field.name;
+}
+
+function validateField(field) {
+    const isMultiSelect = field.multiple === true;
+    const isEmpty = isMultiSelect
+        ? field.selectedOptions.length === 0
+        : field.value.trim() === "";
+    const feedbackElement = field.parentNode.querySelector(".invalid-feedback");
+    
+    if (feedbackElement) feedbackElement.remove();
+
+    if (isEmpty) {
+        field.classList.remove("is-valid");
+        field.classList.add("is-invalid");
+        
+        const fieldLabel = getFieldLabel(field);
+        const feedback = document.createElement("div");
+        feedback.className = "invalid-feedback";
+        
+        // Custom messages as requested
+        if (field.id === 'patient_id') feedback.textContent = "Please select a patient";
+        else if (field.id === 'visit_date') feedback.textContent = "Visit date is required";
+        else if (field.id === 'visit_time') feedback.textContent = "Visit time is required";
+        else if (field.id === 'visit_type') feedback.textContent = "Please select visit type";
+        else if (field.id === 'practitioner') feedback.textContent = "Please select at least one practitioner";
+        else feedback.textContent = `${fieldLabel} is required`;
+        
+        field.parentNode.appendChild(feedback);
+        return false;
+    } else {
+        field.classList.remove("is-invalid");
+        field.classList.add("is-valid");
+        return true;
+    }
+}
+
+function validateBP(field) {
+    const value = field.value.trim();
+    if (value === "") {
+        field.classList.remove("is-invalid", "is-valid");
+        const feedback = field.parentNode.querySelector(".invalid-feedback");
+        if (feedback) feedback.remove();
+        return true;
+    }
+
+    const bpRegex = /^\d{2,3}\/\d{2,3}$/;
+    const feedbackElement = field.parentNode.querySelector(".invalid-feedback");
+    if (feedbackElement) feedbackElement.remove();
+
+    if (!bpRegex.test(value)) {
+        field.classList.remove("is-valid");
+        field.classList.add("is-invalid");
+        const feedback = document.createElement("div");
+        feedback.className = "invalid-feedback";
+        feedback.textContent = "Format: 120/80 (systolic/diastolic)";
+        field.parentNode.appendChild(feedback);
+        return false;
+    } else {
+        field.classList.remove("is-invalid");
+        field.classList.add("is-valid");
+        return true;
+    }
+}
+
 document.getElementById("visit_form").addEventListener("submit", function(e) {
     e.preventDefault();
     
+    const requiredFields = [
+        "patient_id", 
+        "visit_date", 
+        "visit_time", 
+        "visit_type", 
+        "practitioner",
+        "blood_pressure",
+        "temperature",
+        "weight"
+    ];
+    
+    let isValid = true;
+    let missingFields = [];
+
+    requiredFields.forEach(id => {
+        const field = document.getElementById(id);
+        if (id === 'patient_id') {
+            if (!field.value) {
+                isValid = false;
+                missingFields.push("Patient Selection");
+                const searchInput = document.getElementById('patient_search');
+                searchInput.classList.add('is-invalid');
+                if (!searchInput.parentNode.querySelector('.invalid-feedback')) {
+                    const feedback = document.createElement("div");
+                    feedback.className = "invalid-feedback";
+                    feedback.textContent = "Please select a patient";
+                    searchInput.parentNode.appendChild(feedback);
+                }
+            }
+        } else if (id === 'blood_pressure') {
+            if (!validateBP(field)) {
+                isValid = false;
+                if (!field.value.trim()) {
+                    missingFields.push("Blood Pressure");
+                } else {
+                    missingFields.push("Valid Blood Pressure (120/80)");
+                }
+            }
+        } else if (!validateField(field)) {
+            isValid = false;
+            missingFields.push(getFieldLabel(field));
+        }
+    });
+
+    // Check for package or service selection
+    if (!selectedPackage && selectedServices.length === 0) {
+        isValid = false;
+        missingFields.push("Package or Service Selection");
+        const servicesContainer = document.getElementById('selected_services');
+        servicesContainer.classList.add('border-danger');
+        if (!servicesContainer.parentNode.querySelector('.text-danger.small')) {
+            const error = document.createElement("div");
+            error.className = "text-danger small mt-1";
+            error.id = "services_error_msg";
+            error.textContent = "Please select at least one package or one service";
+            servicesContainer.parentNode.appendChild(error);
+        }
+    } else {
+        const servicesContainer = document.getElementById('selected_services');
+        servicesContainer.classList.remove('border-danger');
+        const errorMsg = document.getElementById('services_error_msg');
+        if (errorMsg) errorMsg.remove();
+    }
+
+    if (!isValid) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Missing Information',
+            html: `Please fill in the following required fields:<br><br><ul class="text-start"><li>${missingFields.join('</li><li>')}</li></ul>`,
+            confirmButtonColor: '#3085d6'
+        });
+        const firstError = document.querySelector(".is-invalid");
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
     // Append seconds to visit_time to match H:i:s format
     const visitTimeInput = document.getElementById('visit_time');
     if (visitTimeInput && visitTimeInput.value) {
-        // If time is in HH:MM format, append :00 seconds
         if (visitTimeInput.value.match(/^\d{2}:\d{2}$/)) {
             visitTimeInput.value = visitTimeInput.value + ':00';
         }
     }
     
-    // Populate hidden fields with selected services and package data
+    // Populate hidden fields
     document.getElementById('selected_services_data').value = JSON.stringify(selectedServices);
     document.getElementById('selected_package_data').value = selectedPackage ? JSON.stringify(selectedPackage) : '';
     
-    // Calculate total amount
     let total = 0;
-    if (selectedPackage) {
-        total += selectedPackage.price;
-    }
-    selectedServices.forEach(service => {
-        total += service.price;
-    });
+    if (selectedPackage) total += selectedPackage.price;
+    selectedServices.forEach(service => { total += service.price; });
     document.getElementById('total_amount_data').value = total;
     
-    console.log("FORM SUBMIT EVENT FIRED");
-    console.log("Form action:", this.action);
-    console.log("Form method:", this.method);
-    console.log("Selected services:", selectedServices);
-    console.log("Selected package:", selectedPackage);
-    console.log("Total amount:", total);
-    
     const formData = new FormData(this);
-    console.log("Form data:");
-    for (let [key, value] of formData.entries()) {
-        console.log(key + ':', value);
-    }
     
     // Show loading state
     const submitBtn = this.querySelector('button[type="submit"]');
@@ -383,7 +578,6 @@ document.getElementById("visit_form").addEventListener("submit", function(e) {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
     submitBtn.disabled = true;
     
-    // Submit via AJAX
     fetch(this.action, {
         method: 'POST',
         body: formData,
@@ -392,132 +586,124 @@ document.getElementById("visit_form").addEventListener("submit", function(e) {
             'Accept': 'application/json'
         }
     })
-    .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers.get('content-type'));
+    .then(async response => {
+        const data = await response.json();
         
         if (response.status === 422) {
-            // Validation errors - expect JSON
-            return response.json().then(data => {
-                let errorMessage = 'Please fix the following errors:\n\n';
-                
-                if (data.errors) {
-                    Object.keys(data.errors).forEach(field => {
-                        data.errors[field].forEach(error => {
-                            errorMessage += `• ${error}\n`;
-                        });
-                    });
-                } else if (data.message) {
-                    errorMessage = data.message;
-                }
-                
-                // Show SweetAlert with validation errors
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Validation Error',
-                    text: errorMessage,
-                    confirmButtonColor: '#d33',
-                    confirmButtonText: 'OK'
-                });
-                
-                // Don't submit the form - stop here
-                throw new Error('Validation failed');
-            }).catch(jsonError => {
-                console.error('JSON parsing error:', jsonError);
-                // Fallback if JSON parsing fails
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Validation Error',
-                    text: 'Please check all required fields and try again.',
-                    confirmButtonColor: '#d33',
-                    confirmButtonText: 'OK'
-                });
-                // Don't submit the form - stop here
-                throw new Error('Validation failed');
-            });
-        }
-        
-        if (response.status === 200 || response.status === 302) {
-            // Success - check if it's a redirect
-            if (response.redirected) {
-                // Laravel redirected successfully - go to the new page
-                window.location.href = response.url;
-                return;
-            }
+            // Server-side validation errors
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
             
-            // Try to parse as JSON for success message
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // Non-JSON success - redirect to visits list
-                window.location.href = '/visits';
-                return;
-            }
-        }
-        
-        // Other status codes - try to parse error
-        return response.text().then(text => {
-            try {
-                return JSON.parse(text);
-            } catch {
-                return { success: false, message: 'Unexpected response format' };
-            }
-        });
-    })
-    .then(data => {
-        if (data && data.success) {
-            // Success - show SweetAlert and redirect
+            // Clear existing errors
+            document.querySelectorAll(".is-invalid").forEach(el => el.classList.remove("is-invalid"));
+            document.querySelectorAll(".invalid-feedback").forEach(el => el.remove());
+
+            // Display server errors
+            Object.keys(data.errors).forEach(key => {
+                let field = document.getElementById(key);
+                if (key === 'patient_id') field = document.getElementById('patient_search');
+                
+                if (field) {
+                    field.classList.add("is-invalid");
+                    const feedback = document.createElement("div");
+                    feedback.className = "invalid-feedback";
+                    feedback.textContent = data.errors[key][0];
+                    field.parentNode.appendChild(feedback);
+                }
+            });
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: 'Please correct the highlighted errors.',
+                confirmButtonColor: '#d33'
+            });
+        } else if (data.success) {
             const isEdit = {{ isset($visit) ? 'true' : 'false' }};
             Swal.fire({
                 icon: 'success',
                 title: isEdit ? 'Visit Updated!' : 'Visit Recorded!',
-                text: isEdit ? 'Patient visit has been updated successfully.' : 'Patient visit has been recorded successfully.',
+                text: data.message || (isEdit ? 'Patient visit has been updated successfully.' : 'Patient visit has been recorded successfully.'),
                 timer: 2000,
                 showConfirmButton: false,
                 timerProgressBar: true
             }).then(() => {
-                window.location.href = '/visits';
+                window.location.href = "{{ route('visits') }}";
             });
         } else {
-            // Error from backend
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: (data && data.message) || 'An error occurred while saving the visit.',
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'OK'
-            });
+            throw new Error(data.message || 'Something went wrong');
         }
     })
     .catch(error => {
-        console.error('Fetch error:', error);
-        
-        // Don't show SweetAlert for validation errors (they're already handled)
-        if (error.message === 'Validation failed') {
-            // Validation errors are already displayed, just restore button
-            return;
-        }
-        
-        // Show SweetAlert for other errors only
-        Swal.fire({
-            icon: 'error',
-            title: 'Network Error',
-            text: 'A network error occurred. Please check your connection and try again.',
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'OK'
-        });
-    })
-    .finally(() => {
-        // Restore button
+        console.error('Error:', error);
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
+        
+        if (error.message !== 'Validation failed') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'An unexpected error occurred.'
+            });
+        }
     });
 });
 
 // Package & Service Selection JavaScript
 let selectedServices = [];
 let selectedPackage = null;
+
+// BMI Calculation
+const weightInput = document.getElementById('weight');
+const bmiInput = document.getElementById('bmi');
+let currentPatientHeight = null; // Store current patient's height
+
+// Fetch patient data including height
+function fetchPatientData(patientId) {
+    fetch(`/patients/${patientId}/json`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentPatientHeight = data.patient.height;
+                console.log('Patient height loaded:', currentPatientHeight);
+                
+                // Trigger BMI calculation if weight is already entered
+                if (weightInput.value) {
+                    calculateBMI();
+                }
+            } else {
+                console.error('Failed to fetch patient data:', data.message);
+                currentPatientHeight = null;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching patient data:', error);
+            currentPatientHeight = null;
+        });
+}
+
+// BMI Calculation
+function calculateBMI() {
+    const weight = parseFloat(weightInput.value);
+    
+    console.log('BMI Calculation - Weight:', weight, 'Patient Height:', currentPatientHeight);
+    
+    // Only calculate BMI if we have both weight and height
+    if (weight && currentPatientHeight && currentPatientHeight > 0) {
+        const heightInMeters = currentPatientHeight / 100;
+        const bmi = weight / (heightInMeters * heightInMeters);
+        bmiInput.value = bmi.toFixed(1);
+        console.log('Calculated BMI:', bmi.toFixed(1));
+    } else {
+        bmiInput.value = '';
+    }
+    
+    // Validate height range
+    if (currentPatientHeight > 300 || currentPatientHeight < 50) {
+        console.log('Invalid height value:', currentPatientHeight);
+        bmiInput.value = '';
+    }
+}
 
 // Initialize form with existing data (for edit mode)
 document.addEventListener('DOMContentLoaded', function() {
@@ -553,8 +739,31 @@ document.addEventListener('DOMContentLoaded', function() {
         updatePricing();
         
         console.log('After UI update');
+        
+        // Add event listener for weight input to calculate BMI on change
+        if (weightInput && bmiInput) {
+            weightInput.addEventListener('input', calculateBMI);
+        }
+        
+        // Auto-load patient height for edit visits
+        @if(isset($visit) && isset($visit->patient_id))
+            // When editing a visit, automatically load the patient's height
+            fetchPatientData({{ $visit->patient_id }});
+        @endif
     @else
         console.log('Add mode - no existing data to load');
+        
+        // Check if patient is pre-loaded from URL parameter
+        @if(isset($patient))
+            console.log('Patient pre-loaded from URL:', @json($patient));
+            // Auto-load patient height when patient is pre-selected
+            fetchPatientData({{ $patient->id }});
+        @endif
+        
+        // Add event listener for weight input to calculate BMI on change
+        if (weightInput && bmiInput) {
+            weightInput.addEventListener('input', calculateBMI);
+        }
     @endif
 });
 
@@ -587,6 +796,12 @@ function addService() {
     
     updateServicesList();
     updatePricing();
+    
+    // Clear validation error if present
+    const servicesContainer = document.getElementById('selected_services');
+    servicesContainer.classList.remove('border-danger');
+    const errorMsg = document.getElementById('services_error_msg');
+    if (errorMsg) errorMsg.remove();
     
     // Reset selection
     serviceSelect.selectedIndex = 0;
@@ -711,6 +926,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     name: selectedOption.text.split(' - ')[0],
                     price: parseFloat(selectedOption.getAttribute('data-price'))
                 };
+                
+                // Clear validation error if present
+                const servicesContainer = document.getElementById('selected_services');
+                servicesContainer.classList.remove('border-danger');
+                const errorMsg = document.getElementById('services_error_msg');
+                if (errorMsg) errorMsg.remove();
             } else {
                 selectedPackage = null;
             }
@@ -732,50 +953,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const patientResultsDiv = document.getElementById('patient_results');
     const patientIdInput = document.getElementById('patient_id');
     const patientNameInput = document.getElementById('patient_name');
-    
-    // BMI Calculation
-    const weightInput = document.getElementById('weight');
-    const bmiInput = document.getElementById('bmi');
-    let currentPatientHeight = null; // Store current patient's height
-    
-    function calculateBMI() {
-        const weight = parseFloat(weightInput.value);
-        
-        console.log('BMI Calculation - Weight:', weight, 'Patient Height:', currentPatientHeight);
-        
-        if (weight > 0 && currentPatientHeight > 0) {
-            // Convert height from cm to meters
-            const heightInMeters = currentPatientHeight / 100;
-            console.log('BMI Calculation - Height in meters:', heightInMeters);
-            
-            // Validate reasonable ranges
-            if (weight > 500 || weight < 1) {
-                console.log('Invalid weight value:', weight);
-                bmiInput.value = '';
-                return;
-            }
-            
-            if (currentPatientHeight > 300 || currentPatientHeight < 50) {
-                console.log('Invalid height value:', currentPatientHeight);
-                bmiInput.value = '';
-                return;
-            }
-            
-            const bmi = weight / (heightInMeters * heightInMeters);
-            console.log('BMI Calculation - Calculated BMI:', bmi);
-            
-            // Validate BMI range (should be between 5 and 100)
-            if (bmi > 100 || bmi < 5) {
-                console.log('BMI out of reasonable range:', bmi);
-                bmiInput.value = '';
-                return;
-            }
-            
-            bmiInput.value = bmi.toFixed(1);
-        } else {
-            bmiInput.value = '';
-        }
-    }
     
     // Fetch patient data including height
     function fetchPatientData(patientId) {
@@ -801,6 +978,29 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
+    // BMI Calculation
+    function calculateBMI() {
+        const weight = parseFloat(weightInput.value);
+        
+        console.log('BMI Calculation - Weight:', weight, 'Patient Height:', currentPatientHeight);
+        
+        // Only calculate BMI if we have both weight and height
+        if (weight && currentPatientHeight && currentPatientHeight > 0) {
+            const heightInMeters = currentPatientHeight / 100;
+            const bmi = weight / (heightInMeters * heightInMeters);
+            bmiInput.value = bmi.toFixed(1);
+            console.log('Calculated BMI:', bmi.toFixed(1));
+        } else {
+            bmiInput.value = '';
+        }
+        
+        // Validate height range
+        if (currentPatientHeight > 300 || currentPatientHeight < 50) {
+            console.log('Invalid height value:', currentPatientHeight);
+            bmiInput.value = '';
+        }
+    }
+    
     // Add event listener for weight input only (height comes from patient record)
     if (weightInput && bmiInput) {
         weightInput.addEventListener('input', calculateBMI);
@@ -810,6 +1010,9 @@ document.addEventListener('DOMContentLoaded', function() {
     @if(isset($visit) && isset($visit->patient_id))
         // When editing a visit, automatically load the patient's height
         fetchPatientData({{ $visit->patient_id }});
+        console.log('After UI update');
+    @else
+        console.log('Add mode - no existing data to load');
     @endif
     
     if (patientSearchInput) {

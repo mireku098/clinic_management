@@ -30,45 +30,42 @@
         </div>
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-3">
-                    <label for="filterPatient" class="form-label">Patient</label>
-                    <select class="form-select" id="filterPatient">
-                        <option value="">All Patients</option>
-                    </select>
+                <div class="col-md-4">
+                    <label for="billing_search" class="form-label">Search Billing</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="billing_search"
+                            placeholder="Search by patient name, code, or phone..."
+                            onkeyup="if(event.key === 'Enter') loadBills()"
+                        />
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <label for="filterBill" class="form-label">Bill</label>
-                    <select class="form-select" id="filterBill">
-                        <option value="">All Bills</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="filterStatus" class="form-label">Status</label>
-                    <select class="form-select" id="filterStatus">
-                        <option value="">All Status</option>
+                    <select class="form-select" id="filterStatus" onchange="loadBills()">
+                        <option value="">All Statuses</option>
                         <option value="pending">Pending</option>
                         <option value="partial">Partial</option>
                         <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="filterDateFrom" class="form-label">Date From</label>
-                    <input type="date" class="form-control" id="filterDateFrom">
+                    <input type="date" class="form-control" id="filterDateFrom" onchange="loadBills()">
                 </div>
                 <div class="col-md-3">
                     <label for="filterDateTo" class="form-label">Date To</label>
-                    <input type="date" class="form-control" id="filterDateTo">
+                    <input type="date" class="form-control" id="filterDateTo" onchange="loadBills()">
                 </div>
-                <div class="col-md-3">
-                    <label for="searchBill" class="form-label">Search</label>
-                    <input type="text" class="form-control" id="searchBill" placeholder="Search bills...">
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-outline-secondary me-2" onclick="clearFilters()">
-                        <i class="fas fa-times me-1"></i>Clear
-                    </button>
-                    <button class="btn btn-success" onclick="applyFilters()">
-                        <i class="fas fa-search me-1"></i>Apply
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-outline-primary w-100" onclick="loadBills()">
+                        <i class="fas fa-filter"></i>
                     </button>
                 </div>
             </div>
@@ -140,12 +137,9 @@
                                 <select class="form-select" id="paymentMethod" required>
                                     <option value="">Select Method</option>
                                     <option value="cash">💵 Cash</option>
-                                    <option value="card">💳 Credit/Debit Card</option>
                                     <option value="bank_transfer">🏦 Bank Transfer</option>
-                                    <option value="insurance">🛡️ Insurance</option>
                                     <option value="mobile_money">📱 Mobile Money</option>
                                     <option value="check">📋 Check</option>
-                                    <option value="other">📝 Other</option>
                                 </select>
                                 <small class="text-muted">Select payment method</small>
                             </div>
@@ -194,6 +188,9 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                    <i class="fas fa-print me-1"></i>Print Receipt
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -201,7 +198,7 @@
 </div>
 
 <!-- Alert Container -->
-<div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050"></div>
+<div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 2000"></div>
 @endsection
 
 @section('css')
@@ -232,9 +229,6 @@
 <script>
 let bills = [];
 let selectedBills = [];
-let patients = [];
-let packages = [];
-let services = [];
 
 // Simple alert function
 function showAlert(message, type = 'info') {
@@ -243,7 +237,7 @@ function showAlert(message, type = 'info') {
         alertContainer = document.createElement('div');
         alertContainer.id = 'alert-container';
         alertContainer.className = 'position-fixed top-0 end-0 p-3';
-        alertContainer.style.zIndex = '1050';
+        alertContainer.style.zIndex = '2000';
         document.body.appendChild(alertContainer);
     }
     
@@ -269,9 +263,6 @@ function showAlert(message, type = 'info') {
 // Load initial data
 document.addEventListener('DOMContentLoaded', function() {
     loadBills();
-    loadPatients();
-    loadServices();
-    loadPackages();
     
     // Set today's date as default
     document.getElementById('paymentDate').valueAsDate = new Date();
@@ -279,7 +270,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Load bills
 function loadBills() {
-    fetch('/billing/get-bills')
+    const search = document.getElementById('billing_search').value;
+    const status = document.getElementById('filterStatus').value;
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
+    
+    let url = `/billing/get-bills?`;
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    if (status) url += `status=${status}&`;
+    if (dateFrom) url += `date_from=${dateFrom}&`;
+    if (dateTo) url += `date_to=${dateTo}&`;
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -293,54 +295,6 @@ function loadBills() {
         .catch(error => {
             showAlert('Error loading bills: ' + error.message, 'danger');
         });
-}
-
-// Load patients
-function loadPatients() {
-    fetch('/api/patients')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                patients = data.data;
-                populatePatientSelect();
-            }
-        });
-}
-
-// Load services
-function loadServices() {
-    fetch('/api/services')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                services = data.data;
-            }
-        });
-}
-
-// Load packages
-function loadPackages() {
-    fetch('/packages')
-        .then(response => response.text())
-        .then(html => {
-            // Extract packages from HTML (simplified approach)
-            // In a real implementation, you'd have a dedicated API endpoint
-        });
-}
-
-// Populate patient select
-function populatePatientSelect() {
-    const select = document.getElementById('filterPatient');
-    
-    // Clear existing options except the first one
-    while (select.children.length > 1) {
-        select.removeChild(select.lastChild);
-    }
-    
-    patients.forEach(patient => {
-        const option = new Option(`${patient.first_name} ${patient.last_name} (${patient.patient_code})`, patient.id);
-        select.add(option);
-    });
 }
 
 // Display bills
@@ -570,41 +524,128 @@ function processPayment() {
     });
 }
 
-// Apply filters
-function applyFilters() {
-    const filters = {
-        patient_id: document.getElementById('filterPatient').value,
-        status: document.getElementById('filterStatus').value,
-        date_from: document.getElementById('filterDateFrom').value,
-        date_to: document.getElementById('filterDateTo').value
+// Print receipt
+function printReceipt() {
+    const billDetails = document.getElementById('billDetailsContent').innerHTML;
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    
+    // Create the print-friendly HTML
+    const printHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Bill Receipt</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                    line-height: 1.6;
+                }
+                .header {
+                    text-align: center;
+                    border-bottom: 2px solid #333;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .header h1 {
+                    margin: 0;
+                    color: #333;
+                }
+                .header p {
+                    margin: 5px 0;
+                    color: #666;
+                }
+                .bill-info {
+                    margin-bottom: 30px;
+                }
+                .bill-info h3 {
+                    color: #333;
+                    border-bottom: 1px solid #ccc;
+                    padding-bottom: 10px;
+                }
+                .info-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 10px 0;
+                    padding: 5px 0;
+                }
+                .info-row.label {
+                    font-weight: bold;
+                    color: #333;
+                }
+                .items-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                }
+                .items-table th,
+                .items-table td {
+                    border: 1px solid #ddd;
+                    padding: 12px;
+                    text-align: left;
+                }
+                .items-table th {
+                    background-color: #f8f9fa;
+                    font-weight: bold;
+                }
+                .total-section {
+                    margin-top: 30px;
+                    text-align: right;
+                }
+                .total-row {
+                    display: flex;
+                    justify-content: flex-end;
+                    margin: 10px 0;
+                    font-size: 18px;
+                }
+                .total-row.grand-total {
+                    font-weight: bold;
+                    font-size: 20px;
+                    color: #333;
+                    border-top: 2px solid #333;
+                    padding-top: 10px;
+                }
+                .footer {
+                    margin-top: 50px;
+                    text-align: center;
+                    color: #666;
+                    font-size: 14px;
+                }
+                @media print {
+                    body { margin: 15px; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>CLINIC BILL RECEIPT</h1>
+                <p>Official Receipt</p>
+                <p>Date: ${new Date().toLocaleDateString()}</p>
+            </div>
+            
+            <div class="bill-info">
+                ${billDetails}
+            </div>
+            
+            <div class="footer">
+                <p>Thank you for choosing our clinic!</p>
+                <p>This is a computer-generated receipt. No signature required.</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+    
+    // Wait for the content to load, then print
+    printWindow.onload = function() {
+        printWindow.print();
+        printWindow.close();
     };
-    
-    const queryString = new URLSearchParams(filters).toString();
-    
-    fetch(`/billing/get-bills?${queryString}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                bills = data.data;
-                displayBills();
-                updateBillCount();
-            } else {
-                showAlert(data.message, 'danger');
-            }
-        })
-        .catch(error => {
-            showAlert('Error applying filters: ' + error.message, 'danger');
-        });
-}
-
-// Clear filters
-function clearFilters() {
-    document.getElementById('filterPatient').value = '';
-    document.getElementById('filterStatus').value = '';
-    document.getElementById('filterDateFrom').value = '';
-    document.getElementById('filterDateTo').value = '';
-    
-    loadBills();
 }
 </script>
 @endsection

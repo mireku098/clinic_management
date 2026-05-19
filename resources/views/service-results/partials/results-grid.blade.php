@@ -5,12 +5,12 @@
       <div class="card h-100 result-card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="result-type-icon result-type-{{ $result->result_type }}">
-              @if ($result->result_type === 'text')
+            <div class="result-type-icon result-type-{{ $result->service && $result->service->result_type ? $result->service->result_type : $result->result_type }}">
+              @if (($result->service && $result->service->result_type) ? $result->service->result_type : $result->result_type) === 'text')
                 <i class="fas fa-file-alt"></i>
-              @elseif ($result->result_type === 'numeric')
+              @elseif (($result->service && $result->service->result_type) ? $result->service->result_type : $result->result_type) === 'numeric')
                 <i class="fas fa-calculator"></i>
-              @elseif ($result->result_type === 'file')
+              @elseif (($result->service && $result->service->result_type) ? $result->service->result_type : $result->result_type) === 'file')
                 <i class="fas fa-file-pdf"></i>
               @endif
             </div>
@@ -41,12 +41,15 @@
           </p>
           
           <div class="result-value mb-3">
-            @if ($result->result_type === 'text')
+            @php
+                $displayResultType = $result->service && $result->service->result_type ? $result->service->result_type : $result->result_type;
+            @endphp
+            @if ($displayResultType === 'text')
               <p class="mb-0">{{ Str::limit($result->result_text, 100) }}</p>
-            @elseif ($result->result_type === 'numeric')
+            @elseif ($displayResultType === 'numeric')
               <h5 class="text-primary mb-0">{{ $result->result_numeric }}</h5>
-            @elseif ($result->result_type === 'file')
-              <a href="{{ asset('storage/' . $result->result_file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+            @elseif ($displayResultType === 'file')
+              <a href="{{ asset('storage-public/' . $result->result_file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-download me-1"></i> {{ $result->result_file_name }}
               </a>
             @endif

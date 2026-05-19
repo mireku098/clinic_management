@@ -11,8 +11,8 @@
             <p class="text-muted mb-0">Patient Code: {{ $patient->patient_code }}</p>
         </div>
         <div>
-            <a href="{{ route('service-results.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Back to All Results
+            <a href="{{ route('visits') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Visits
             </a>
         </div>
     </div>
@@ -64,7 +64,7 @@
                                                 <div class="row mb-2">
                                                     <div class="col-md-6">
                                                         <small class="text-muted">Result Type:</small>
-                                                        <span class="badge bg-info ms-1">{{ ucfirst($result->result_type) }}</span>
+                                                        <span class="badge bg-info ms-1">{{ ucfirst($result->service && $result->service->result_type ? $result->service->result_type : $result->result_type) }}</span>
                                                     </div>
                                                     <div class="col-md-6">
                                                         <small class="text-muted">Visit:</small>
@@ -81,12 +81,15 @@
                                                 <div class="mb-2">
                                                     <small class="text-muted">Result Value:</small>
                                                     <div class="mt-1">
-                                                        @if ($result->result_type === 'text')
+                                                        @php
+                                                            $displayResultType = $result->service && $result->service->result_type ? $result->service->result_type : $result->result_type;
+                                                        @endphp
+                                                        @if ($displayResultType === 'text')
                                                             <p class="mb-0">{{ Str::limit($result->result_text, 200) }}</p>
-                                                        @elseif ($result->result_type === 'numeric')
+                                                        @elseif ($displayResultType === 'numeric')
                                                             <span class="h5 text-primary">{{ $result->result_numeric }}</span>
-                                                        @elseif ($result->result_type === 'file')
-                                                            <a href="{{ asset('storage/' . $result->result_file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        @elseif ($displayResultType === 'file')
+                                                            <a href="{{ asset('storage-public/' . $result->result_file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                                 <i class="fas fa-download me-1"></i>Download File
                                                             </a>
                                                         @endif

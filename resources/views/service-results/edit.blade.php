@@ -88,13 +88,33 @@
                                 @endif
                             </div>
                             <div class="col-md-6">
-                                <label for="result_type" class="form-label">Result Type *</label>
-                                <select class="form-select" id="result_type" name="result_type" required>
-                                    <option value="">Select Result Type</option>
-                                    <option value="text" {{ $result->result_type === 'text' ? 'selected' : '' }}>Text</option>
-                                    <option value="numeric" {{ $result->result_type === 'numeric' ? 'selected' : '' }}>Numeric</option>
-                                    <option value="file" {{ $result->result_type === 'file' ? 'selected' : '' }}>File Upload</option>
-                                </select>
+                                @if($result->package_id)
+                                    <label for="result_type" class="form-label">Result Type *</label>
+                                    <div class="form-control">
+                                        <i class="fas fa-cog me-2"></i>
+                                        {{ ucfirst($result->result_type) }}
+                                        <small class="text-muted">(Package result type)</small>
+                                    </div>
+                                    <input type="hidden" id="result_type" name="result_type" value="{{ $result->result_type }}">
+                                @else
+                                    @if($result->service_id && $result->service)
+                                        <label for="result_type" class="form-label">Result Type *</label>
+                                        <div class="form-control">
+                                            <i class="fas fa-cog me-2"></i>
+                                            {{ ucfirst($result->service->result_type ?? $result->result_type) }}
+                                            <small class="text-muted">(Auto-detected from service)</small>
+                                        </div>
+                                        <input type="hidden" id="result_type" name="result_type" value="{{ $result->service->result_type ?? $result->result_type }}">
+                                    @else
+                                        <label for="result_type" class="form-label">Result Type *</label>
+                                        <select class="form-select" id="result_type" name="result_type" required>
+                                            <option value="">Select Result Type</option>
+                                            <option value="text" {{ $result->result_type === 'text' ? 'selected' : '' }}>Text</option>
+                                            <option value="numeric" {{ $result->result_type === 'numeric' ? 'selected' : '' }}>Numeric</option>
+                                            <option value="file" {{ $result->result_type === 'file' ? 'selected' : '' }}>File Upload</option>
+                                        </select>
+                                    @endif
+                                @endif
                             </div>
                             <div class="col-md-6">
                                 <label for="status" class="form-label">Status *</label>
@@ -124,21 +144,21 @@
                     <div class="card-body">
                         <!-- Text Result -->
                         <div id="text_result_section" class="result-section" {{ $result->result_type === 'text' ? '' : 'style="display: none;"' }}>
-                            <label for="result_text" class="form-label">Text Result *</label>
+                            <label for="result_text" class="form-label">Text Result {{ $result->result_type === 'text' ? '*' : '' }}</label>
                             <textarea class="form-control" id="result_text" name="result_text" rows="6" placeholder="Enter the text result...">{{ $result->result_text ?? '' }}</textarea>
                             <small class="text-muted">Enter the complete text result or findings</small>
                         </div>
 
                         <!-- Numeric Result -->
                         <div id="numeric_result_section" class="result-section" {{ $result->result_type === 'numeric' ? '' : 'style="display: none;"' }}>
-                            <label for="result_numeric" class="form-label">Numeric Result *</label>
+                            <label for="result_numeric" class="form-label">Numeric Result {{ $result->result_type === 'numeric' ? '*' : '' }}</label>
                             <input type="number" class="form-control" id="result_numeric" name="result_numeric" step="0.01" placeholder="Enter numeric value..." value="{{ $result->result_numeric ?? '' }}">
                             <small class="text-muted">Enter the numeric measurement or value</small>
                         </div>
 
                         <!-- File Result -->
                         <div id="file_result_section" class="result-section" {{ $result->result_type === 'file' ? '' : 'style="display: none;"' }}>
-                            <label for="result_file" class="form-label">Upload File</label>
+                            <label for="result_file" class="form-label">Upload File {{ $result->result_type === 'file' ? '*' : '' }}</label>
                             <input type="file" class="form-control" id="result_file" name="result_file" accept=".pdf,.jpg,.jpeg,.png">
                             <small class="text-muted">Upload new file to replace existing (Max: 5MB)</small>
                             
@@ -146,7 +166,7 @@
                                 <div class="mt-3">
                                     <div class="alert alert-info">
                                         <i class="fas fa-file me-2"></i>
-                                        Current file: <a href="{{ asset('storage/' . $result->result_file_path) }}" target="_blank">{{ $result->result_file_name }}</a>
+                                        Current file: <a href="{{ asset('storage-public/' . $result->result_file_path) }}" target="_blank">{{ $result->result_file_name }}</a>
                                     </div>
                                 </div>
                             @endif
@@ -336,29 +356,21 @@ document.getElementById("edit_result_form").addEventListener("submit", function(
     });
 });
 
-// Result type switching
-document.getElementById('result_type').addEventListener('change', function() {
-    const resultType = this.value;
-    
-    // Hide all result sections
-    document.querySelectorAll('.result-section').forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Show selected result section
-    if (resultType) {
-        document.getElementById(resultType + '_result_section').style.display = 'block';
-    }
-});
-
 // Service selection - auto-set result type
 document.getElementById('service_id').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
     const resultType = selectedOption.getAttribute('data-result-type');
     
     if (resultType) {
-        document.getElementById('result_type').value = resultType;
-        document.getElementById('result_type').dispatchEvent(new Event('change'));
+        // If result_type is a select element, update it and trigger change
+        const resultTypeElement = document.getElementById('result_type');
+        if (resultTypeElement && resultTypeElement.tagName === 'SELECT') {
+            resultTypeElement.value = resultType;
+            resultTypeElement.dispatchEvent(new Event('change'));
+        } else {
+            // If result_type is hidden, directly show the appropriate section
+            showResultSection(resultType);
+        }
     }
 });
 
@@ -368,19 +380,19 @@ document.getElementById('patient_id').addEventListener('change', function() {
     const visitSelect = document.getElementById('visit_id');
     
     if (patientId) {
-        fetch(`/api/patients/${patientId}/visits`)
+        // Load visits for this patient
+        fetch(`/patients/${patientId}/visits/json`)
             .then(response => response.json())
             .then(data => {
                 visitSelect.innerHTML = '<option value="">Select Visit</option>';
                 data.visits.forEach(visit => {
-                    visitSelect.innerHTML += `<option value="${visit.id}">Visit #${visit.id} - ${new Date(visit.created_at).toLocaleString()}</option>`;
+                    const selected = visit.id == '{{ $result->visit_id ?? '' }}' ? 'selected' : '';
+                    visitSelect.innerHTML += `<option value="${visit.id}" ${selected}>${visit.visit_date} - ${visit.visit_type}</option>`;
                 });
             })
-            .catch(error => {
-                console.error('Error loading visits:', error);
-            });
+            .catch(error => console.error('Error loading visits:', error));
     } else {
-        visitSelect.innerHTML = '<option value="">Select Visit</option>';
+        visitSelect.innerHTML = '<option value="">Select Patient First</option>';
     }
 });
 
@@ -405,14 +417,37 @@ function clearFile() {
 
 // Initialize result type on page load
 document.addEventListener('DOMContentLoaded', function() {
-    const resultType = document.getElementById('result_type').value;
-    showResultSection(resultType);
+    const resultType = document.getElementById('result_type');
+    
+    if (resultType && resultType.value) {
+        showResultSection(resultType.value);
+    }
+    
+    // For service results, auto-load the service's result type section
+    const serviceSelect = document.getElementById('service_id');
+    if (serviceSelect && serviceSelect.value) {
+        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+        const serviceResultType = selectedOption.getAttribute('data-result-type');
+        
+        if (serviceResultType) {
+            showResultSection(serviceResultType);
+        }
+    }
+    
+    // Also check if result_type is hidden (for linked services) and use its value
+    if (resultType && resultType.type === 'hidden' && resultType.value) {
+        showResultSection(resultType.value);
+    }
 });
 
-// Result type change handler
-document.getElementById('result_type').addEventListener('change', function() {
-    showResultSection(this.value);
-});
+// Result type change handler (only if result_type is a select element)
+const resultTypeElement = document.getElementById('result_type');
+
+if (resultTypeElement && resultTypeElement.tagName === 'SELECT') {
+    resultTypeElement.addEventListener('change', function() {
+        showResultSection(this.value);
+    });
+}
 
 function showResultSection(resultType) {
     // Hide all result sections

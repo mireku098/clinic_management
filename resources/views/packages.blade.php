@@ -10,7 +10,15 @@
             <h1>Treatment Packages</h1>
             <p class="text-muted">Manage clinic treatment packages and pricing</p>
         </div>
-        <div>
+        <div class="btn-group">
+            <div class="btn-group me-2" role="group">
+                <button type="button" class="btn btn-outline-secondary {{ request('view') !== 'trash' ? 'active' : '' }}" onclick="window.location.href='{{ route('packages') }}'">
+                    <i class="fas fa-list me-2"></i>Active
+                </button>
+                <button type="button" class="btn btn-outline-secondary {{ request('view') === 'trash' ? 'active' : '' }}" onclick="window.location.href='{{ route('packages', ['view' => 'trash']) }}'">
+                    <i class="fas fa-trash-alt me-2"></i>Deleted
+                </button>
+            </div>
             <a href="{{ route('packages.add') }}" class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i>
                 Add New Package
@@ -26,7 +34,7 @@
                     <i class="fas fa-box"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>{{ isset($packages) ? $packages->count() : 0 }}</h3>
+                    <h3 id="stat-total">{{ $stats['total'] }}</h3>
                     <p>Total Packages</p>
                 </div>
             </div>
@@ -37,19 +45,19 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>{{ isset($packages) ? $packages->where('status', 'active')->count() : 0 }}</h3>
+                    <h3 id="stat-active">{{ $stats['active'] }}</h3>
                     <p>Active Packages</p>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stat-card">
-                <div class="stat-icon bg-info">
-                    <i class="fas fa-check-circle"></i>
+                <div class="stat-icon bg-danger">
+                    <i class="fas fa-trash-alt"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>{{ isset($packages) ? $packages->where('status', 'inactive')->count() : 0 }}</h3>
-                    <p>Inactive Packages</p>
+                    <h3 id="stat-deleted">{{ $stats['deleted'] }}</h3>
+                    <p>Deleted Packages</p>
                 </div>
             </div>
         </div>
@@ -59,7 +67,7 @@
                     <i class="fas fa-clock"></i>
                 </div>
                 <div class="stat-details">
-                    <h3>{{ isset($packages) ? $packages->sum('duration_weeks') : 0 }}</h3>
+                    <h3 id="stat-weeks">{{ $stats['total_weeks'] }}</h3>
                     <p>Total Weeks</p>
                 </div>
             </div>
@@ -159,14 +167,28 @@
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button class="btn btn-sm btn-outline-primary" onclick="editPackage('{{ $package->id }}')">
-                                    <i class="fas fa-edit me-2"></i>
-                                    Edit
-                                </button>
-                                <button class="btn btn-sm btn-{{ $package->status === 'active' ? 'outline-danger' : 'outline-success' }}" onclick="togglePackageStatus('{{ $package->id }}', '{{ $package->status }}')">
-                                    <i class="fas fa-{{ $package->status === 'active' ? 'times' : 'check' }} me-2"></i>
-                                    {{ $package->status === 'active' ? 'Deactivate' : 'Activate' }}
-                                </button>
+                                @if($package->trashed())
+                                    <button class="btn btn-sm btn-outline-success restore-btn-pkg" 
+                                            data-url="{{ route('packages.restore', $package->id) }}">
+                                        <i class="fas fa-undo me-2"></i>
+                                        Restore
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger force-delete-btn-pkg" 
+                                            data-url="{{ route('packages.force-delete', $package->id) }}">
+                                        <i class="fas fa-times me-2"></i>
+                                        Permanently Delete
+                                    </button>
+                                @else
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editPackage('{{ $package->id }}')">
+                                        <i class="fas fa-edit me-2"></i>
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-btn-pkg" 
+                                            data-url="{{ route('packages.destroy', $package->id) }}">
+                                        <i class="fas fa-trash me-2"></i>
+                                        Delete
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -314,36 +336,177 @@
         });
     }
 
+    // Global Event Delegation for packages
+    document.addEventListener('click', function(e) {
+        // Restore button
+        const restoreBtn = e.target.closest('.restore-btn-pkg');
+        if (restoreBtn) {
+            e.preventDefault();
+            const url = restoreBtn.getAttribute('data-url');
+            if (url) restorePackage(url);
+            return;
+        }
+
+        // Force delete button
+        const forceDeleteBtn = e.target.closest('.force-delete-btn-pkg');
+        if (forceDeleteBtn) {
+            e.preventDefault();
+            const url = forceDeleteBtn.getAttribute('data-url');
+            if (url) forceDeletePackage(url);
+            return;
+        }
+
+        // Delete button
+        const deleteBtn = e.target.closest('.delete-btn-pkg');
+        if (deleteBtn) {
+            e.preventDefault();
+            const url = deleteBtn.getAttribute('data-url');
+            if (url) deletePackage(url);
+            return;
+        }
+    });
+
     // Edit package
     function editPackage(packageId) {
-        window.location.href = `/packages/${packageId}/edit`;
+        window.location.href = `{{ url('packages') }}/${packageId}/edit`;
     }
 
-    // Toggle package status
-    function togglePackageStatus(packageId, currentStatus) {
-        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-        
-        fetch(`/packages/${packageId}/status`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({ status: newStatus })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showAlert(data.message, 'success');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                showAlert(data.message || 'Failed to update package status', 'danger');
+    // Soft delete package
+    function deletePackage(url) {
+        Swal.fire({
+            title: 'Delete Package?',
+            text: 'Are you sure you want to delete this package?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = '{{ route("packages") }}';
+                        });
+                    } else {
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error!', 'An error occurred while deleting the package.', 'error');
+                });
             }
-        })
-        .catch(error => {
-            console.error('Error updating package status:', error);
-            showAlert('Error updating package status', 'danger');
         });
+    }
+
+    // Restore package
+    function restorePackage(url) {
+        Swal.fire({
+            title: 'Restore Package?',
+            text: 'This package will be moved back to the active list.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, restore it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Restored!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = '{{ route("packages") }}';
+                        });
+                    } else {
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error!', 'An error occurred while restoring the package.', 'error');
+                });
+            }
+        });
+    }
+
+    // Permanently delete package
+    function forceDeletePackage(url) {
+        Swal.fire({
+            title: 'Permanently Delete?',
+            text: 'This action cannot be undone! This package will be removed forever.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete forever!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted Forever!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = '{{ route("packages") }}';
+                        });
+                    } else {
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error!', 'An error occurred while permanently deleting the package.', 'error');
+                });
+            }
+        });
+    }
+
+    // Toggle package status (deprecated, but keeping signature for now or removing if not used elsewhere)
+    function togglePackageStatus(packageId, currentStatus) {
+        // Redirect to delete for consistency if called
+        deletePackage(packageId);
     }
 </script>
 @endsection

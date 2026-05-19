@@ -55,8 +55,8 @@
                                 <input type="number" class="form-control" id="age" name="age" readonly />
                             </div>
                             <div class="col-md-6">
-                                <label for="phone" class="form-label">Phone Number</label>
-                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="Any phone number format" value="{{ old('phone') }}" />
+                                <label for="phone" class="form-label">Phone Number *</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="e.g. 0201234567" value="{{ old('phone') }}" required />
                             </div>
                             <div class="col-md-6">
                                 <label for="email" class="form-label">Email Address</label>
@@ -156,12 +156,12 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="emergency_contact_name" class="form-label">Emergency Contact Name</label>
-                                <input type="text" class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="{{ old('emergency_contact_name') }}" />
+                                <label for="emergency_contact_name" class="form-label">Emergency Contact Name *</label>
+                                <input type="text" class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="{{ old('emergency_contact_name') }}" required />
                             </div>
                             <div class="col-md-6">
-                                <label for="emergency_contact_phone" class="form-label">Emergency Contact Phone</label>
-                                <input type="tel" class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" placeholder="02012345678" value="{{ old('emergency_contact_phone') }}" />
+                                <label for="emergency_contact_phone" class="form-label">Emergency Contact Phone *</label>
+                                <input type="tel" class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" placeholder="02012345678" value="{{ old('emergency_contact_phone') }}" required />
                             </div>
                         </div>
                     </div>
@@ -176,10 +176,6 @@
                                 Clear Form
                             </button>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-primary" onclick="saveAsDraft()">
-                                    <i class="fas fa-save me-2"></i>
-                                    Save as Draft
-                                </button>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-user-plus me-2"></i>
                                     Register Patient
@@ -201,15 +197,15 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span>Patients Today</span>
-                        <span class="badge bg-primary">5</span>
+                        <span class="badge bg-primary">{{ $stats['today'] ?? 0 }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span>This Week</span>
-                        <span class="badge bg-success">23</span>
+                        <span class="badge bg-success">{{ $stats['this_week'] ?? 0 }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span>This Month</span>
-                        <span class="badge bg-info">87</span>
+                        <span class="badge bg-info">{{ $stats['this_month'] ?? 0 }}</span>
                     </div>
                 </div>
             </div>
@@ -249,14 +245,24 @@
 <script>
     // Real-time form validation
     document.addEventListener("DOMContentLoaded", function () {
-        const requiredFields = ["first_name", "last_name", "gender", "date_of_birth", "phone"];
+        const requiredFields = [
+            "first_name", 
+            "last_name", 
+            "gender", 
+            "date_of_birth", 
+            "phone",
+            "emergency_contact_name",
+            "emergency_contact_phone"
+        ];
 
         requiredFields.forEach((fieldId) => {
             const field = document.getElementById(fieldId);
             if (field) {
+                // Validate on blur
                 field.addEventListener("blur", function () {
                     validateField(this);
                 });
+                // Real-time feedback after initial attempt
                 field.addEventListener("input", function () {
                     if (this.classList.contains("is-invalid") || this.classList.contains("is-valid")) {
                         validateField(this);
@@ -265,134 +271,137 @@
             }
         });
 
+        // Email validation
         const emailField = document.getElementById("email");
         if (emailField) {
             emailField.addEventListener("blur", function () {
                 validateEmail(this);
             });
-        }
-
-        const phoneField = document.getElementById("phone");
-        if (phoneField) {
-            phoneField.addEventListener("blur", function () {
-                validatePhone(this);
+            emailField.addEventListener("input", function () {
+                if (this.classList.contains("is-invalid") || this.classList.contains("is-valid")) {
+                    validateEmail(this);
+                }
             });
         }
     });
 
+    function getFieldLabel(field) {
+        const label = document.querySelector(`label[for="${field.id}"]`);
+        return label ? label.textContent.replace('*', '').trim() : field.name;
+    }
+
     function validateField(field) {
         const value = field.value.trim();
-        const feedbackElement = field.parentNode.querySelector(".invalid-feedback, .valid-feedback");
-
-        if (feedbackElement) {
-            feedbackElement.remove();
-        }
+        const feedbackElement = field.parentNode.querySelector(".invalid-feedback");
+        
+        if (feedbackElement) feedbackElement.remove();
 
         if (value === "") {
             field.classList.remove("is-valid");
             field.classList.add("is-invalid");
+            
+            const fieldLabel = getFieldLabel(field);
             const feedback = document.createElement("div");
             feedback.className = "invalid-feedback";
-            feedback.textContent = "This field is required";
+            
+            // Custom messages as requested
+            if (field.id === 'first_name') feedback.textContent = "Please enter patient's first name";
+            else if (field.id === 'last_name') feedback.textContent = "Please enter patient's last name";
+            else if (field.id === 'date_of_birth') feedback.textContent = "Date of birth is required";
+            else feedback.textContent = `${fieldLabel} is required`;
+            
             field.parentNode.appendChild(feedback);
+            return false;
         } else {
             field.classList.remove("is-invalid");
             field.classList.add("is-valid");
-            const feedback = document.createElement("div");
-            feedback.className = "valid-feedback";
-            feedback.textContent = "Looks good!";
-            field.parentNode.appendChild(feedback);
+            return true;
         }
     }
 
     function validateEmail(field) {
         const value = field.value.trim();
-        const feedbackElement = field.parentNode.querySelector(".invalid-feedback, .valid-feedback");
-        if (feedbackElement) {
-            feedbackElement.remove();
+        if (value === "") {
+            field.classList.remove("is-invalid", "is-valid");
+            const feedback = field.parentNode.querySelector(".invalid-feedback");
+            if (feedback) feedback.remove();
+            return true;
         }
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (value !== "" && !emailRegex.test(value)) {
+        const feedbackElement = field.parentNode.querySelector(".invalid-feedback");
+        if (feedbackElement) feedbackElement.remove();
+
+        if (!emailRegex.test(value)) {
             field.classList.remove("is-valid");
             field.classList.add("is-invalid");
             const feedback = document.createElement("div");
             feedback.className = "invalid-feedback";
             feedback.textContent = "Please enter a valid email address";
             field.parentNode.appendChild(feedback);
-        } else if (value !== "") {
-            field.classList.remove("is-invalid");
-            field.classList.add("is-valid");
-            const feedback = document.createElement("div");
-            feedback.className = "valid-feedback";
-            feedback.textContent = "Valid email address";
-            field.parentNode.appendChild(feedback);
-        }
-    }
-
-    function validatePhone(field) {
-        // Commented out phone validation - allowing any phone format
-        const value = field.value.trim();
-        const feedbackElement = field.parentNode.querySelector(".invalid-feedback, .valid-feedback");
-        if (feedbackElement) {
-            feedbackElement.remove();
-        }
-        
-        // const phoneRegex = /^0[0-9]{9}$/; // Commented out - no longer enforcing Ghanaian format
-        // if (value !== "" && !phoneRegex.test(value)) { // Commented out - no format restriction
-        //     field.classList.remove("is-valid");
-        //     field.classList.add("is-invalid");
-        //     const feedback = document.createElement("div");
-        //     feedback.className = "invalid-feedback";
-        //     feedback.textContent = "Please enter a valid Ghanaian phone number (e.g., 0201234567)";
-        //     field.parentNode.appendChild(feedback);
-        // } else if (value !== "") { // Commented out - always valid if not empty
-        //     field.classList.remove("is-invalid");
-        //     field.classList.add("is-valid");
-        //     const feedback = document.createElement("div");
-        //     feedback.className = "valid-feedback";
-        //     feedback.textContent = "Valid phone number";
-        //     field.parentNode.appendChild(feedback);
-        // }
-        
-        // New simplified validation - just check if it's not empty (optional field)
-        if (value !== "") {
-            field.classList.remove("is-invalid");
-            field.classList.add("is-valid");
-            const feedback = document.createElement("div");
-            feedback.className = "valid-feedback";
-            feedback.textContent = "Phone number accepted";
-            field.parentNode.appendChild(feedback);
+            return false;
         } else {
-            field.classList.remove("is-invalid", "is-valid");
+            field.classList.remove("is-invalid");
+            field.classList.add("is-valid");
+            return true;
         }
     }
 
+    // Age calculation
     document.getElementById("date_of_birth").addEventListener("change", function () {
         const dob = this.value;
         if (dob) {
-            const age = Math.floor((new Date() - new Date(dob).getTime()) / 3.15576e10);
+            const birthDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
             document.getElementById("age").value = age;
         } else {
             document.getElementById("age").value = "";
         }
     });
 
+    // Form Submission with AJAX
     document.getElementById("patient_form").addEventListener("submit", function (e) {
-        e.preventDefault(); // Prevent normal form submission
-        console.log('AJAX form submission started');
+        e.preventDefault();
         
-        const formData = new FormData(this);
-        const patientData = Object.fromEntries(formData);
-        console.log('Form data:', patientData);
+        const requiredFields = [
+            "first_name", "last_name", "gender", "date_of_birth", 
+            "phone", "emergency_contact_name", "emergency_contact_phone"
+        ];
+        
+        let isValid = true;
+        let missingFields = [];
 
-        // Only validate required fields (phone is optional)
-        if (!patientData.first_name || !patientData.last_name || !patientData.gender || !patientData.date_of_birth) {
-            console.log('Validation failed - missing required fields');
-            window.clinicSystem.showAlert("Please fill in all required fields (Name, Gender, Date of Birth)", "danger");
+        requiredFields.forEach(id => {
+            const field = document.getElementById(id);
+            if (!validateField(field)) {
+                isValid = false;
+                missingFields.push(getFieldLabel(field));
+            }
+        });
+
+        const emailField = document.getElementById("email");
+        if (!validateEmail(emailField)) {
+            isValid = false;
+            missingFields.push("Valid Email Address");
+        }
+
+        if (!isValid) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Information',
+                html: `Please fill in the following required fields:<br><br><ul class="text-start"><li>${missingFields.join('</li><li>')}</li></ul>`,
+                confirmButtonColor: '#3085d6'
+            });
+            // Scroll to first error
+            const firstError = document.querySelector(".is-invalid");
+            if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
-        
-        console.log('Validation passed - submitting via AJAX');
         
         // Show loading state
         const submitBtn = this.querySelector('button[type="submit"]');
@@ -400,7 +409,8 @@
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Registering...';
         submitBtn.disabled = true;
         
-        // Submit via AJAX
+        const formData = new FormData(this);
+        
         fetch(this.action, {
             method: 'POST',
             body: formData,
@@ -409,72 +419,70 @@
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Response:', data);
-            
-            if (data.success) {
-                // Success - show success message then redirect
+        .then(async response => {
+            const data = await response.json();
+            if (response.status === 422) {
+                // Server-side validation errors
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                // Clear existing errors
+                document.querySelectorAll(".is-invalid").forEach(el => el.classList.remove("is-invalid"));
+                document.querySelectorAll(".invalid-feedback").forEach(el => el.remove());
+
+                // Display server errors
+                Object.keys(data.errors).forEach(key => {
+                    const field = document.getElementById(key) || document.getElementsByName(key)[0];
+                    if (field) {
+                        field.classList.add("is-invalid");
+                        const feedback = document.createElement("div");
+                        feedback.className = "invalid-feedback";
+                        feedback.textContent = data.errors[key][0];
+                        field.parentNode.appendChild(feedback);
+                    }
+                });
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validation Error',
+                    text: 'Please correct the highlighted errors.',
+                    confirmButtonColor: '#d33'
+                });
+            } else if (data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Patient Registered!',
-                    text: data.message || 'Patient has been created successfully.',
-                    showConfirmButton: true,
+                    text: data.message,
                     timer: 2000,
-                    timerProgressBar: true
+                    showConfirmButton: false
                 }).then(() => {
-                    // Redirect after success message
-                    window.location.href = '/patients';
+                    window.location.href = "{{ route('patients') }}";
                 });
             } else {
-                // Error - show error message
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Registration Failed',
-                    text: data.message || 'An error occurred while creating the patient.',
-                    showConfirmButton: true,
-                });
+                throw new Error(data.message || 'Something went wrong');
             }
         })
         .catch(error => {
-            console.error('AJAX Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Network Error',
-                text: 'Could not connect to the server. Please try again.',
-                showConfirmButton: true,
-            });
-        })
-        .finally(() => {
-            // Restore button state
+            console.error('Error:', error);
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'An unexpected error occurred.'
+            });
         });
     });
 
-    function saveAsDraft() {
-        const formData = new FormData(document.getElementById("patient_form"));
-        const patientData = Object.fromEntries(formData);
-        localStorage.setItem("patientDraft", JSON.stringify(patientData));
-        window.clinicSystem.showAlert("Draft saved successfully", "info");
-    }
-
-    window.addEventListener("load", function () {
-        const draft = localStorage.getItem("patientDraft");
-        if (draft) {
-            const patientData = JSON.parse(draft);
-            Object.keys(patientData).forEach((key) => {
-                const field = document.querySelector(`[name="${key}"]`);
-                if (field) {
-                    field.value = patientData[key];
-                }
-            });
-        }
-    });
-
+    // Image preview
     document.getElementById("patient_photo").addEventListener("change", function (e) {
         const file = e.target.files[0];
-        if (file && file.type.startsWith("image/")) {
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                Swal.fire('File too large', 'Maximum size is 2MB', 'error');
+                this.value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = function (e) {
                 const avatar = document.querySelector(".patient-avatar");

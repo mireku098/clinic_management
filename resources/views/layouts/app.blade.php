@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="base-url" content="{{ url('/') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/img/favicon.ico') }}" />
     <title>@yield('title', 'Clinic Management System')</title>
 
@@ -82,6 +83,8 @@
         @endphp
     @endif
     
+    <!-- Base URL helper (must load before other app scripts) -->
+    <script src="{{ asset('assets/js/app-url.js') }}"></script>
     <!-- Session Manager -->
     <script src="{{ asset('assets/js/session-manager.js') }}"></script>
     @yield('js')

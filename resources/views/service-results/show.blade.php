@@ -51,7 +51,7 @@
                                     <p class="mb-1"><strong>Date:</strong> {{ $result->visit->visit_date ? \Carbon\Carbon::parse($result->visit->visit_date)->format('F d, Y') : 'No date' }}</p>
                                     <p class="mb-1"><strong>Time:</strong> {{ $result->visit->visit_time ? \Carbon\Carbon::parse($result->visit->visit_time)->format('H:i') : 'No time' }}</p>
                                     <p class="mb-1"><strong>Type:</strong> {{ ucfirst($result->visit->visit_type) }}</p>
-                                    <p class="mb-0"><strong>Practitioner:</strong> {{ $result->visit->practitioner ?? 'Not assigned' }}</p>
+                                    <p class="mb-0"><strong>Practitioner(s):</strong> {{ $result->visit->practitioner_display ?? 'Not assigned' }}</p>
                                 </div>
                             </div>
                         </div>
@@ -65,7 +65,7 @@
                                 <div class="row">
                                     <div class="col-md-4">
                                         <p class="mb-1"><strong>Result Type:</strong> 
-                                            <span class="badge bg-info ms-1">{{ ucfirst($result->result_type) }}</span>
+                                            <span class="badge bg-info ms-1">{{ ucfirst($result->service && $result->service->result_type ? $result->service->result_type : $result->result_type) }}</span>
                                         </p>
                                         <p class="mb-1"><strong>Status:</strong> 
                                             <span class="badge bg-{{ $result->status === 'approved' ? 'success' : ($result->status === 'pending_approval' ? 'warning' : ($result->status === 'rejected' ? 'danger' : 'secondary')) }}">
@@ -77,13 +77,16 @@
                                     <div class="col-md-8">
                                         <p class="mb-1"><strong>Result Value:</strong></p>
                                         <div class="p-3 bg-white border rounded">
-                                            @if ($result->result_type === 'text')
+                                            @php
+                                                $displayResultType = $result->service && $result->service->result_type ? $result->service->result_type : $result->result_type;
+                                            @endphp
+                                            @if ($displayResultType === 'text')
                                                 <p class="mb-0">{{ $result->result_text }}</p>
-                                            @elseif ($result->result_type === 'numeric')
+                                            @elseif ($displayResultType === 'numeric')
                                                 <h3 class="text-primary mb-0">{{ $result->result_numeric }}</h3>
-                                            @elseif ($result->result_type === 'file')
+                                            @elseif ($displayResultType === 'file')
                                                 @if ($result->result_file_path)
-                                                    <a href="{{ asset('storage/' . $result->result_file_path) }}" target="_blank" class="btn btn-primary">
+                                                    <a href="{{ asset('storage-public/' . $result->result_file_path) }}" target="_blank" class="btn btn-primary">
                                                         <i class="fas fa-download me-2"></i>Download {{ $result->result_file_name }}
                                                     </a>
                                                 @else

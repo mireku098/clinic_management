@@ -25,7 +25,7 @@
                 <div class="col-md-2 text-center">
                     <div class="patient-avatar mx-auto mb-2" style="width: 80px; height: 80px">
                         @if($patient->photo_path)
-                            <img src="{{ asset('storage/' . $patient->photo_path) }}" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                            <img src="{{ asset('storage-public/' . $patient->photo_path) }}" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
                         @else
                             <i class="fas fa-user" style="font-size: 2rem"></i>
                         @endif
@@ -91,7 +91,7 @@
                     <div class="card-body text-center">
                         <div class="patient-avatar mx-auto mb-3" style="width: 120px; height: 120px">
                             @if($patient->photo_path)
-                                <img src="{{ asset('storage/' . $patient->photo_path) }}" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="{{ asset('storage-public/' . $patient->photo_path) }}" class="rounded-circle" style="width: 100%; height: 100%; object-fit: cover;">
                             @else
                                 <i class="fas fa-user" style="font-size: 3rem"></i>
                             @endif
@@ -232,21 +232,15 @@
                 <!-- Form Actions -->
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <button type="button" class="btn btn-outline-danger" onclick="archivePatient()">
-                                <i class="fas fa-archive me-2"></i>
-                                Archive Patient
+                        <div class="d-flex justify-content-end">
+                            <a href="{{ route('patients') }}" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-times me-2"></i>
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                Update Patient
                             </button>
-                            <div>
-                                <a href="{{ route('patients') }}" class="btn btn-outline-secondary me-2">
-                                    <i class="fas fa-times me-2"></i>
-                                    Cancel
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>
-                                    Update Patient
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -255,60 +249,52 @@
 
         <!-- Sidebar -->
         <div class="col-lg-4">
-            <!-- Quick Actions -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-outline-primary">
-                            <i class="fas fa-stethoscope me-2"></i>
-                            Schedule Appointment
-                        </button>
-                        <button type="button" class="btn btn-outline-success">
-                            <i class="fas fa-file-medical me-2"></i>
-                            Add Visit Record
-                        </button>
-                        <button type="button" class="btn btn-outline-info">
-                            <i class="fas fa-flask me-2"></i>
-                            Order Lab Test
-                        </button>
-                        <button type="button" class="btn btn-outline-warning">
-                            <i class="fas fa-pills me-2"></i>
-                            Prescribe Medication
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Recent Visits -->
             <div class="card">
                 <div class="card-header">
                     <h5><i class="fas fa-history me-2"></i>Recent Visits</h5>
                 </div>
                 <div class="card-body">
-                    <div class="timeline">
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-success"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Regular Checkup</h6>
-                                <small class="text-muted">2024-01-25 - Dr. Smith</small>
-                            </div>
+                    @if($visits->count() > 0)
+                        <div class="timeline">
+                            @foreach($visits as $visit)
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-{{ $visit->status === 'completed' ? 'success' : ($visit->status === 'pending' ? 'warning' : 'info') }}"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">{{ $visit->chief_complaint ?? 'General Visit' }}</h6>
+                                        <small class="text-muted">
+                                            {{ \Carbon\Carbon::parse($visit->visit_date)->format('M j, Y') }} - 
+                                            {{ $visit->user->name ?? 'Unknown' }}
+                                            @if($visit->services->count() > 0)
+                                                <span class="badge bg-primary ms-1">{{ $visit->services->count() }} service(s)</span>
+                                            @endif
+                                        </small>
+                                        @if($visit->status !== 'completed')
+                                            <div class="mt-1">
+                                                <span class="badge bg-{{ $visit->status === 'pending' ? 'warning' : 'secondary' }}">
+                                                    {{ ucfirst($visit->status) }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-warning"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Initial Assessment</h6>
-                                <small class="text-muted">2024-01-15 - Dr. Williams</small>
-                            </div>
+                        <div class="text-center mt-3">
+                            <a href="{{ route('patients.visits', $patient->patient_code) }}" class="btn btn-sm btn-outline-primary">
+                                View All Visits
+                            </a>
                         </div>
-                    </div>
-                    <div class="text-center mt-3">
-                        <a href="{{ route('visits') }}" class="btn btn-sm btn-outline-primary">
-                            View All Visits
-                        </a>
-                    </div>
+                    @else
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                            <p>No visits recorded yet</p>
+                            <a href="{{ route('visits.add') }}?patient_code={{ $patient->patient_code }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Add First Visit
+                            </a>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -374,36 +360,6 @@
         // Let the form submit naturally - no JavaScript interference
         console.log('Form submitting naturally...');
     });
-
-    function archivePatient() {
-        Swal.fire({
-            title: "Archive Patient?",
-            html: `
-                <p>Archiving this patient will:</p>
-                <ul style="text-align: left; display: inline-block;">
-                    <li>Mark patient as inactive</li>
-                    <li>Remove from active patient lists</li>
-                    <li>Preserve all medical records</li>
-                    <li>Keep billing history intact</li>
-                    <li>Maintain visit records</li>
-                </ul>
-                <p><strong>Patient can be reactivated later if needed.</strong></p>
-            `,
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#ffc107",
-            cancelButtonColor: "#6c757d",
-            confirmButtonText: "Archive Patient",
-            cancelButtonText: "Cancel",
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.clinicSystem.showAlert("Patient archived successfully", "success");
-                setTimeout(() => {
-                    window.location.href = "{{ route('patients') }}";
-                }, 1500);
-            }
-        });
-    }
 
     document.getElementById("patient_photo").addEventListener("change", function (e) {
         const file = e.target.files[0];

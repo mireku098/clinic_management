@@ -37,6 +37,23 @@
                         <label for="packageDescription" class="form-label">Description</label>
                         <textarea class="form-control" id="packageDescription" name="packageDescription" rows="3">{{ $package->description }}</textarea>
                     </div>
+                    <div class="col-md-6">
+                        <label for="resultType" class="form-label">Result Type *</label>
+                        <select class="form-select" id="resultType" name="resultType" required>
+                            <option value="">Select Result Type</option>
+                            <option value="text" {{ $package->result_type === 'text' ? 'selected' : '' }}>Text</option>
+                            <option value="numeric" {{ $package->result_type === 'numeric' ? 'selected' : '' }}>Numeric</option>
+                            <option value="file" {{ $package->result_type === 'file' ? 'selected' : '' }}>File Upload</option>
+                        </select>
+                        <small class="text-muted">Default result type for services in this package</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="status" class="form-label">Status *</label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="active" {{ $package->status === 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="inactive" {{ $package->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

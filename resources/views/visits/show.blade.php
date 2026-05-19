@@ -75,6 +75,22 @@
                     </div>
                     <div class="row mt-2">
                         <div class="col-sm-4">
+                            <strong>Practitioner(s):</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ $visit->practitioner_display }}
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-sm-4">
+                            <strong>Department(s):</strong>
+                        </div>
+                        <div class="col-sm-8">
+                            {{ $visit->department_display }}
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-sm-4">
                             <strong>Purpose:</strong>
                         </div>
                         <div class="col-sm-8">
@@ -104,7 +120,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    @if($visit->blood_pressure || $visit->temperature || $visit->heart_rate)
+                    @if($visit->blood_pressure || $visit->temperature || $visit->pulse_rate || $visit->oxygen_saturation || $visit->respiratory_rate)
                         @if($visit->blood_pressure)
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span><i class="fas fa-heart text-danger me-2"></i>Blood Pressure</span>
@@ -117,10 +133,22 @@
                             <strong>{{ $visit->temperature }}°C</strong>
                         </div>
                         @endif
-                        @if($visit->heart_rate)
+                        @if($visit->pulse_rate)
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span><i class="fas fa-heartbeat text-danger me-2"></i>Heart Rate</span>
-                            <strong>{{ $visit->heart_rate }} bpm</strong>
+                            <span><i class="fas fa-heartbeat text-danger me-2"></i>Pulse Rate</span>
+                            <strong>{{ $visit->pulse_rate }} bpm</strong>
+                        </div>
+                        @endif
+                        @if($visit->oxygen_saturation)
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span><i class="fas fa-lungs text-info me-2"></i>O₂ Saturation</span>
+                            <strong>{{ $visit->oxygen_saturation }}%</strong>
+                        </div>
+                        @endif
+                        @if($visit->respiratory_rate)
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span><i class="fas fa-wind text-secondary me-2"></i>Respiratory Rate</span>
+                            <strong>{{ $visit->respiratory_rate }} /min</strong>
                         </div>
                         @endif
                     @else
@@ -217,7 +245,7 @@
                             <strong>Attended By:</strong>
                         </div>
                         <div class="col-sm-8">
-                            {{ $visit->attendingUser ? $visit->attendingUser->name : 'Unknown' }}
+                            {{ $visit->attended_by ?: 'Unknown' }}
                         </div>
                     </div>
                     <div class="row mt-2">

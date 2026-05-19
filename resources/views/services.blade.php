@@ -9,7 +9,15 @@
         <h2 class="mb-0">Services</h2>
         <p class="text-muted mb-0">Manage clinic services and pricing</p>
       </div>
-      <div>
+      <div class="btn-group">
+        <div class="btn-group me-2" role="group">
+          <button type="button" class="btn btn-outline-secondary {{ request('view') !== 'trash' ? 'active' : '' }}" onclick="window.location.href='{{ route('services') }}'">
+            <i class="fas fa-list me-2"></i>Active
+          </button>
+          <button type="button" class="btn btn-outline-secondary {{ request('view') === 'trash' ? 'active' : '' }}" onclick="window.location.href='{{ route('services', ['view' => 'trash']) }}'">
+            <i class="fas fa-trash-alt me-2"></i>Deleted
+          </button>
+        </div>
         <a href="{{ route('services.add') }}" class="btn btn-primary">
           <i class="fas fa-plus me-2"></i>Add Service
         </a>
@@ -24,7 +32,7 @@
             <i class="fas fa-stethoscope"></i>
           </div>
           <div class="stat-details">
-            <h3>{{ $services->total() }}</h3>
+            <h3 id="stat-total">{{ $stats['total'] }}</h3>
             <p>Total Services</p>
           </div>
         </div>
@@ -36,7 +44,7 @@
             <i class="fas fa-check-circle"></i>
           </div>
           <div class="stat-details">
-            <h3>{{ $services->where('status', 'active')->count() }}</h3>
+            <h3 id="stat-active">{{ $stats['active'] }}</h3>
             <p>Active Services</p>
           </div>
         </div>
@@ -44,12 +52,12 @@
 
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-icon bg-warning">
-            <i class="fas fa-pause-circle"></i>
+          <div class="stat-icon bg-danger">
+            <i class="fas fa-trash-alt"></i>
           </div>
           <div class="stat-details">
-            <h3>{{ $services->where('status', 'inactive')->count() }}</h3>
-            <p>Inactive Services</p>
+            <h3 id="stat-deleted">{{ $stats['deleted'] }}</h3>
+            <p>Deleted Services</p>
           </div>
         </div>
       </div>
@@ -60,7 +68,7 @@
             <i class="fas fa-money-bill-wave"></i>
           </div>
           <div class="stat-details">
-            <h3>GH₵{{ number_format($services->avg('price'), 0) }}</h3>
+            <h3 id="stat-avg-price">GH₵{{ number_format($stats['avg_price'], 0) }}</h3>
             <p>Avg. Price</p>
           </div>
         </div>
@@ -193,6 +201,10 @@ function performSearch() {
     if (statusFilter && statusFilter.value) params.append('status', statusFilter.value);
     if (priceRangeFilter && priceRangeFilter.value) params.append('price_range', priceRangeFilter.value);
     
+    // Add view parameter if it exists
+    const view = new URLSearchParams(window.location.search).get('view');
+    if (view) params.append('view', view);
+    
     // Make AJAX request
     fetch(`{{ route("services") }}?${params.toString()}`, {
       method: 'GET',
@@ -218,7 +230,12 @@ function performSearch() {
       }
       
       // Update stats
-      updateServiceStats(data.count);
+      updateServiceStats(data.stats);
+      
+      // Re-attach event listeners for dynamic content
+      if (typeof attachActionListeners === 'function') {
+        attachActionListeners();
+      }
     })
     .catch(error => {
       console.error('Error:', error);
@@ -232,16 +249,64 @@ function performSearch() {
   }, 300); // Debounce search
 }
 
-function updateServiceStats(count) {
-  // Update total services count if needed
-  const totalElement = document.querySelector('.stat-details h3');
-  if (totalElement && count !== undefined) {
-    totalElement.textContent = count;
-  }
+function updateServiceStats(stats) {
+  if (!stats) return;
+  
+  const totalElement = document.getElementById('stat-total');
+  const activeElement = document.getElementById('stat-active');
+  const deletedElement = document.getElementById('stat-deleted');
+  const avgPriceElement = document.getElementById('stat-avg-price');
+  
+  if (totalElement) totalElement.textContent = stats.total;
+  if (activeElement) activeElement.textContent = stats.active;
+  if (deletedElement) deletedElement.textContent = stats.deleted;
+  if (avgPriceElement) avgPriceElement.textContent = 'GH₵' + parseFloat(stats.avg_price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
 }
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
+  // Global Event Delegation for buttons
+  document.addEventListener('click', function(e) {
+    // Restore button
+    const restoreBtn = e.target.closest('.restore-btn');
+    if (restoreBtn) {
+      e.preventDefault();
+      const url = restoreBtn.getAttribute('data-url');
+      if (url) handleRestore(url);
+      return;
+    }
+
+    // Force delete button
+    const forceDeleteBtn = e.target.closest('.force-delete-btn');
+    if (forceDeleteBtn) {
+      e.preventDefault();
+      const url = forceDeleteBtn.getAttribute('data-url');
+      if (url) handleForceDelete(url);
+      return;
+    }
+  });
+
+  // Soft delete form delegation
+  document.addEventListener('submit', function(e) {
+    if (e.target.classList.contains('soft-delete-form')) {
+      e.preventDefault();
+      
+      Swal.fire({
+        title: 'Delete Service?',
+        text: 'Are you sure you want to delete this service?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          handleSoftDelete(e.target);
+        }
+      });
+    }
+  });
+
   // Search input
   const searchInput = document.getElementById('service_search');
   if (searchInput) {
@@ -259,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
     statusFilter.addEventListener('change', performSearch);
   }
   
+  // Price range filter
   const priceRangeFilter = document.getElementById('price_range');
   if (priceRangeFilter) {
     priceRangeFilter.addEventListener('change', performSearch);
@@ -269,15 +335,163 @@ document.addEventListener('DOMContentLoaded', function() {
   if (applyFiltersBtn) {
     applyFiltersBtn.addEventListener('click', performSearch);
   }
+});
+
+function attachActionListeners() {
+  // This function is now empty as we use event delegation
+}
+
+function handleSoftDelete(form) {
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
   
-  // Status toggle forms
-  document.addEventListener('submit', function(e) {
-    if (e.target.classList.contains('status-toggle-form')) {
-      e.preventDefault();
-      handleStatusToggle(e.target);
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  
+  fetch(form.action, {
+    method: 'POST',
+    body: new FormData(form),
+    headers: {
+      'X-CSRF-TOKEN': '{{ csrf_token() }}',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: data.message,
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            window.location.href = '{{ route("services") }}';
+          });
+        } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: data.message
+      });
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error!',
+      text: 'Network error. Please try again.'
+    });
+  })
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  });
+}
+
+function handleRestore(url) {
+  Swal.fire({
+    title: 'Restore Service?',
+    text: 'This service will be moved back to the active list.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, restore it!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Restored!',
+            text: data.message,
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            window.location.href = '{{ route("services") }}';
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: data.message
+      });
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error!',
+          text: 'Network error. Please try again.'
+        });
+      });
     }
   });
-});
+}
+
+function handleForceDelete(url) {
+  Swal.fire({
+    title: 'Permanently Delete?',
+    text: 'This action cannot be undone! This service will be removed forever.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, delete forever!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: data.message,
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            window.location.href = '{{ route("services") }}';
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: data.message
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error!',
+          text: 'Network error. Please try again.'
+        });
+      });
+    }
+  });
+}
 
 function handleStatusToggle(form) {
   const formData = new FormData(form);

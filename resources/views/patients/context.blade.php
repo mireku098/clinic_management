@@ -2,36 +2,293 @@
 
 @section('title', 'Patient Context')
 
+@section('css')
+<style>
+    .patient-context-container {
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+    .patient-header {
+        background: #fff;
+        padding: 2rem 0;
+        border-bottom: 1px solid #e9ecef;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .patient-avatar-container {
+        width: 80px;
+        height: 80px;
+        background: #e9ecef;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #6c757d;
+        border: 3px solid #fff;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .patient-info h3 {
+        margin-bottom: 0.25rem;
+        font-weight: 700;
+        color: #2d3748;
+    }
+    .patient-meta .badge {
+        font-weight: 500;
+        padding: 0.5em 0.75em;
+    }
+    .patient-navigation {
+        background: #fff;
+        margin-top: -1px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .nav-tabs.patient-nav-tabs {
+        border-bottom: none;
+    }
+    .nav-tabs.patient-nav-tabs .nav-link {
+        border: none;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        color: #718096;
+        transition: all 0.2s;
+        border-bottom: 3px solid transparent;
+    }
+    .nav-tabs.patient-nav-tabs .nav-link:hover {
+        color: #4a5568;
+        background: #f7fafc;
+    }
+    .nav-tabs.patient-nav-tabs .nav-link.active {
+        color: #3182ce;
+        border-bottom-color: #3182ce;
+        background: transparent;
+    }
+    .patient-content {
+        padding: 2rem 0;
+    }
+    .module-container {
+        display: none;
+    }
+    .module-container.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+    .card-header {
+        background: #fff;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px 12px 0 0 !important;
+    }
+    .stat-card {
+        padding: 1.5rem;
+        border-radius: 12px;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .vitals-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .vitals-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e2e8f0;
+    }
+    .vital-entry {
+        position: relative;
+        padding-bottom: 2rem;
+    }
+    .vital-entry::before {
+        content: '';
+        position: absolute;
+        left: -1.75rem;
+        top: 0.25rem;
+        width: 12px;
+        height: 12px;
+        background: #3182ce;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 2px #3182ce;
+    }
+    .vital-date {
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+    }
+    .vital-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .vital-metric {
+        background: #f7fafc;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        min-width: 120px;
+    }
+    .vital-metric .value {
+        font-weight: 700;
+        font-size: 1.125rem;
+        color: #2d3748;
+    }
+    .bg-success-soft { background-color: rgba(72, 187, 120, 0.15); }
+    .bg-primary-soft { background-color: rgba(66, 153, 225, 0.15); }
+    .bg-warning-soft { background-color: rgba(237, 137, 54, 0.15); }
+    .bg-info-soft { background-color: rgba(66, 153, 225, 0.15); }
+    .text-success { color: #2f855a !important; }
+    .text-primary { color: #2b6cb0 !important; }
+    .text-warning { color: #c05621 !important; }
+    .text-info { color: #2b6cb0 !important; }
+    
+    /* Dashboard Specific Styles */
+    .dashboard-stat-card {
+        border-radius: 15px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        transition: transform 0.3s ease;
+        height: 100%;
+    }
+    .dashboard-stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .dashboard-stat-card .icon-bg {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 5rem;
+        opacity: 0.1;
+        transform: rotate(-15deg);
+    }
+    .dashboard-stat-card .card-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+    .dashboard-stat-card .card-value {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0;
+    }
+    .activity-timeline {
+        position: relative;
+        padding-left: 1.5rem;
+    }
+    .activity-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #edf2f7;
+    }
+    .activity-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    .activity-item::before {
+        content: '';
+        position: absolute;
+        left: -1.85rem;
+        top: 0.25rem;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #3182ce;
+        z-index: 1;
+    }
+    .activity-item.visit::before { border-color: #3182ce; }
+    .activity-item.payment::before { border-color: #48bb78; }
+    .activity-item.lab::before { border-color: #805ad5; }
+    
+    .vitals-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    .vital-snapshot {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid #f1f5f9;
+    }
+    .vital-snapshot .icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .vital-snapshot .value {
+        font-weight: 700;
+        font-size: 1.1rem;
+        display: block;
+    }
+    .vital-snapshot .label {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+</style>
+@endsection
+
 @section('content')
 <div class="patient-context-container">
     <!-- Patient Header -->
     <div class="patient-header">
-        <div class="container-fluid">
+        <div class="container-fluid px-4">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <div class="patient-avatar">
-                        <i class="fas fa-user"></i>
+                    <div class="patient-avatar-container">
+                        @if($patient->patient_photo)
+                            <img src="{{ asset('storage/' . $patient->patient_photo) }}" alt="Patient Photo" class="rounded-circle w-100 h-100" style="object-fit: cover;">
+                        @else
+                            <i class="fas fa-user"></i>
+                        @endif
                     </div>
                 </div>
                 <div class="col patient-info">
-                    <h3 id="patientName">{{ $patient->first_name }} {{ $patient->last_name }}</h3>
-                    <div class="patient-meta">
-                        <span class="badge bg-light text-dark me-2" id="patientId">{{ $patient->patient_code }}</span>
-                        <span class="me-2"><i class="fas fa-birthday-cake me-1"></i><span id="patientAge">{{ $patient->age }}</span> years</span>
-                        <span class="me-2"><i class="fas fa-venus-mars me-1"></i><span id="patientGender">{{ $patient->gender }}</span></span>
-                        <span class="badge bg-success" id="patientStatus">Active</span>
+                    <h3>{{ $patient->first_name }} {{ $patient->last_name }}</h3>
+                    <div class="patient-meta d-flex align-items-center">
+                        <span class="badge bg-primary me-3">{{ $patient->patient_code }}</span>
+                        <span class="text-muted me-3"><i class="fas fa-birthday-cake me-1 text-primary"></i>{{ $patient->age }} years</span>
+                        <span class="text-muted me-3"><i class="fas fa-venus-mars me-1 text-primary"></i>{{ ucfirst($patient->gender) }}</span>
+                        <span class="text-muted me-3"><i class="fas fa-phone me-1 text-primary"></i>{{ $patient->phone }}</span>
+                        <span class="badge bg-success">Active</span>
                     </div>
                 </div>
                 <div class="col-auto patient-actions">
-                    <button class="btn btn-light btn-sm" onclick="editPatient()">
-                        <i class="fas fa-edit me-1"></i>Edit Patient
-                    </button>
-                    <button class="btn btn-light btn-sm" onclick="addVisit()">
-                        <i class="fas fa-plus me-1"></i>Add Visit
-                    </button>
-                    <button class="btn btn-outline-light btn-sm" onclick="closePatientContext()">
-                        <i class="fas fa-times me-1"></i>Close
-                    </button>
+                    <div class="btn-group">
+                        <a href="{{ route('patients.edit', $patient->id) }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit me-1"></i>Edit Profile
+                        </a>
+                        <a href="{{ route('visits.add') }}?patient_code={{ $patient->patient_code }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>New Visit
+                        </a>
+                        <a href="{{ route('patients') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Close
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -63,7 +320,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-module="prescriptions" href="#" onclick="switchModule('prescriptions')">
-                        <i class="fas fa-prescription me-1"></i>Prescriptions
+                        <i class="fas fa-prescriptions me-1"></i>Prescriptions
                     </a>
                 </li>
                 <li class="nav-item">
@@ -85,55 +342,189 @@
         <div class="container-fluid">
             <!-- Overview Module -->
             <div id="overview-module" class="module-container active">
+                <!-- Top Row: Metric Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="dashboard-stat-card bg-primary text-white">
+                            <i class="fas fa-calendar-check icon-bg"></i>
+                            <div class="card-title">Total Visits</div>
+                            <div class="card-value">{{ $contextData['overview']['total_visits'] }}</div>
+                            <div class="small mt-2 opacity-75">Latest: {{ $contextData['overview']['last_visit_date'] }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-stat-card bg-success text-white">
+                            <i class="fas fa-hand-holding-medical icon-bg"></i>
+                            <div class="card-title">Active Services</div>
+                            <div class="card-value">{{ $contextData['overview']['active_services_count'] }}</div>
+                            <div class="small mt-2 opacity-75">Assigned to patient</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-stat-card bg-info text-white">
+                            <i class="fas fa-box-open icon-bg"></i>
+                            <div class="card-title">Active Packages</div>
+                            <div class="card-value">{{ $contextData['overview']['active_packages_count'] }}</div>
+                            <div class="small mt-2 opacity-75">Care plans active</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="dashboard-stat-card bg-warning text-white">
+                            <i class="fas fa-wallet icon-bg"></i>
+                            <div class="card-title">Balance Due</div>
+                            <div class="card-value">GH₵{{ $contextData['overview']['outstanding_balance'] }}</div>
+                            <div class="small mt-2 opacity-75">Outstanding balance</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-dashboard text-primary me-2"></i>
-                                    Patient Overview
-                                </h5>
-                                <button class="btn btn-sm btn-primary" onclick="refreshOverview()">
-                                    <i class="fas fa-refresh me-1"></i>Refresh
-                                </button>
+                    <!-- Left Column: Activity & History -->
+                    <div class="col-md-8">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-history text-primary me-2"></i>Recent Activity</h5>
+                                <button class="btn btn-sm btn-link text-decoration-none" onclick="switchModule('medical-history')">View All</button>
                             </div>
                             <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <div class="patient-avatar-large mb-3">
-                                                <i class="fas fa-user" style="font-size: 3rem"></i>
+                                <div class="activity-timeline">
+                                    @if($contextData['medical_history']['has_history'])
+                                        @foreach($contextData['medical_history']['medical_history']->take(3) as $activity)
+                                            <div class="activity-item visit">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <h6 class="mb-0 fw-bold">Patient Visit: {{ $activity['practitioner'] }}</h6>
+                                                    <small class="text-muted">{{ $activity['visit_date'] }}</small>
+                                                </div>
+                                                <p class="text-muted small mb-0">{{ $activity['chief_complaint'] ?? 'No complaint recorded' }}</p>
+                                                <div class="mt-2">
+                                                    @foreach($activity['services'] as $service)
+                                                        <span class="badge bg-light text-dark border me-1 small">{{ $service['name'] }}</span>
+                                                    @endforeach
+                                                </div>
                                             </div>
-                                            <h6>Registration Date</h6>
-                                            <p class="text-muted" id="regDateDisplay">{{ $patient->registered_at ? (is_string($patient->registered_at) ? date('F d, Y', strtotime($patient->registered_at)) : $patient->registered_at->format('F d, Y')) : 'N/A' }}</p>
+                                        @endforeach
+                                    @else
+                                        <div class="text-center py-4">
+                                            <p class="text-muted mb-0">No recent activity found.</p>
                                         </div>
-                                    </div>
-                                    <div class="col-md-9">
-                                        <div class="row">
-                                            <div class="col-md-4">
-                                                <div class="text-center p-3">
-                                                    <i class="fas fa-calendar-check text-success fa-2x mb-2"></i>
-                                                    <h6>Total Visits</h6>
-                                                    <h4 class="text-success">12</h4>
+                                    @endif
+                                    
+                                    @if($contextData['billing']['has_bills'])
+                                        @foreach($contextData['billing']['bills']->take(1) as $bill)
+                                            @foreach($bill['payments']->take(1) as $payment)
+                                                <div class="activity-item payment">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <h6 class="mb-0 fw-bold">Payment Received</h6>
+                                                        <small class="text-muted">{{ $payment['payment_date'] }}</small>
+                                                    </div>
+                                                    <p class="text-success fw-bold mb-0">GH₵{{ $payment['amount_paid'] }} paid via {{ ucfirst($payment['payment_method']) }}</p>
                                                 </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="text-center p-3">
-                                                    <i class="fas fa-file-medical text-info fa-2x mb-2"></i>
-                                                    <h6>Lab Reports</h6>
-                                                    <h4 class="text-info">8</h4>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="text-center p-3">
-                                                    <i class="fas fa-pills text-warning fa-2x mb-2"></i>
-                                                    <h6>Active Medications</h6>
-                                                    <h4 class="text-warning">3</h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                            @endforeach
+                                        @endforeach
+                                    @endif
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-box text-primary me-2"></i>Active Packages & Care Plans</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                @if($contextData['overview']['active_packages_count'] > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th class="ps-4">Package Name</th>
+                                                    <th>Price</th>
+                                                    <th class="text-end pe-4">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($contextData['overview']['active_packages'] as $package)
+                                                    <tr>
+                                                        <td class="ps-4 fw-bold text-primary">{{ $package->package_name }}</td>
+                                                        <td>GH₵{{ number_format($package->total_cost, 2) }}</td>
+                                                        <td class="text-end pe-4">
+                                                            <span class="badge rounded-pill bg-success-soft text-success px-3">Active</span>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-box fa-3x text-muted opacity-25 mb-3"></i>
+                                        <p class="text-muted mb-0">No active packages found.</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Vitals & Summary -->
+                    <div class="col-md-4">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-heartbeat text-danger me-2"></i>Latest Vitals</h5>
+                                <button class="btn btn-sm btn-link text-decoration-none" onclick="switchModule('vitals')">Full History</button>
+                            </div>
+                            <div class="card-body">
+                                @if($contextData['vitals']['has_vitals'])
+                                    <div class="vitals-grid">
+                                        <div class="vital-snapshot">
+                                            <div class="icon text-danger"><i class="fas fa-stethoscope"></i></div>
+                                            <span class="value">{{ $contextData['vitals']['latest_vitals']['blood_pressure'] ?? '--' }}</span>
+                                            <span class="label">Blood Pressure</span>
+                                        </div>
+                                        <div class="vital-snapshot">
+                                            <div class="icon text-primary"><i class="fas fa-heartbeat"></i></div>
+                                            <span class="value">{{ $contextData['vitals']['latest_vitals']['pulse_rate'] ?? '--' }}</span>
+                                            <span class="label">Pulse Rate</span>
+                                        </div>
+                                        <div class="vital-snapshot">
+                                            <div class="icon text-warning"><i class="fas fa-thermometer-half"></i></div>
+                                            <span class="value">{{ $contextData['vitals']['latest_vitals']['temperature'] ?? '--' }}</span>
+                                            <span class="label">Temperature</span>
+                                        </div>
+                                        <div class="vital-snapshot">
+                                            <div class="icon text-info"><i class="fas fa-weight"></i></div>
+                                            <span class="value">{{ $contextData['vitals']['latest_vitals']['weight'] ?? '--' }}</span>
+                                            <span class="label">Weight</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 text-center">
+                                        <small class="text-muted">Last measured: {{ $contextData['vitals']['latest_vitals']['visit_date'] }}</small>
+                                    </div>
+                                @else
+                                    <div class="text-center py-4">
+                                        <p class="text-muted mb-0">No vitals recorded.</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-info-circle text-primary me-2"></i>Patient Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-3">
+                                        <small class="text-muted text-uppercase fw-bold d-block mb-1">Registered Since</small>
+                                        <span class="fw-bold">{{ $patient->registered_at ? (is_string($patient->registered_at) ? date('M d, Y', strtotime($patient->registered_at)) : $patient->registered_at->format('M d, Y')) : 'N/A' }}</span>
+                                    </li>
+                                    <li class="mb-3">
+                                        <small class="text-muted text-uppercase fw-bold d-block mb-1">Practitioner(s)</small>
+                                        <span class="fw-bold">{{ $contextData['medical_history']['medical_history']->first()['practitioner'] ?? 'Not assigned' }}</span>
+                                    </li>
+                                    <li>
+                                        <small class="text-muted text-uppercase fw-bold d-block mb-1">Email Address</small>
+                                        <span class="fw-bold">{{ $patient->email ?? 'Not provided' }}</span>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -142,251 +533,18 @@
 
             <!-- Vitals Module -->
             <div id="vitals-module" class="module-container">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-heartbeat text-danger me-2"></i>
-                            Vitals History
-                        </h5>
-                        <button class="btn btn-sm btn-primary" onclick="showAddVitalsModal()">
-                            <i class="fas fa-plus me-1"></i>Add Vitals
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="vitals-timeline">
-                            <div class="vital-entry">
-                                <div class="vital-date">January 25, 2024 - 10:30 AM</div>
-                                <div class="vital-metrics">
-                                    <div class="vital-metric">
-                                        <div class="value">120/80</div>
-                                        <div class="label">Blood Pressure</div>
-                                    </div>
-                                    <div class="vital-metric">
-                                        <div class="value">72</div>
-                                        <div class="label">Heart Rate</div>
-                                    </div>
-                                    <div class="vital-metric">
-                                        <div class="value">98.6</div>
-                                        <div class="label">Temperature (°F)</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="vital-entry">
-                                <div class="vital-date">January 20, 2024 - 2:15 PM</div>
-                                <div class="vital-metrics">
-                                    <div class="vital-metric">
-                                        <div class="value">118/78</div>
-                                        <div class="label">Blood Pressure</div>
-                                    </div>
-                                    <div class="vital-metric">
-                                        <div class="value">70</div>
-                                        <div class="label">Heart Rate</div>
-                                    </div>
-                                    <div class="vital-metric">
-                                        <div class="value">98.4</div>
-                                        <div class="label">Temperature (°F)</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="vital-entry">
-                                <div class="vital-date">January 15, 2024 - 9:00 AM</div>
-                                <div class="vital-metrics">
-                                    <div class="vital-metric">
-                                        <div class="value">122/82</div>
-                                        <div class="label">Blood Pressure</div>
-                                    </div>
-                                    <div class="vital-metric">
-                                        <div class="value">74</div>
-                                        <div class="label">Heart Rate</div>
-                                    </div>
-                                    <div class="vital-metric">
-                                        <div class="value">98.7</div>
-                                        <div class="label">Temperature (°F)</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Service Results Module -->
-            <div id="service-results-module" class="module-container">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-flask text-info me-2"></i>
-                            Service Results
-                        </h5>
-                        <small class="text-muted">Results are grouped by visit date</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="lab-reports-grid" id="serviceResultsGrid">
-                            <!-- Service results will be loaded dynamically -->
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                                <p>Loading service results...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Medical History Module -->
-            <div id="medical-history-module" class="module-container">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-history text-secondary me-2"></i>
-                            Medical History
-                        </h5>
-                        <button class="btn btn-sm btn-primary" onclick="showAddMedicalHistoryModal()">
-                            <i class="fas fa-plus me-1"></i>Add Record
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Chronic Conditions</h6>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Hypertension
-                                        <span class="badge bg-warning">Diagnosed 2020</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Type 2 Diabetes
-                                        <span class="badge bg-warning">Diagnosed 2019</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Allergies</h6>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Penicillin
-                                        <span class="badge bg-danger">Severe</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Peanuts
-                                        <span class="badge bg-warning">Moderate</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6>Surgeries</h6>
-                                <div class="timeline">
-                                    <div class="timeline-item">
-                                        <div class="timeline-marker bg-primary"></div>
-                                        <div class="timeline-content">
-                                            <strong>Appendectomy</strong>
-                                            <small class="text-muted d-block">March 15, 2018</small>
-                                            <p>Laparoscopic appendectomy performed at City General Hospital</p>
-                                        </div>
-                                    </div>
-                                    <div class="timeline-item">
-                                        <div class="timeline-marker bg-success"></div>
-                                        <div class="timeline-content">
-                                            <strong>Gallbladder Removal</strong>
-                                            <small class="text-muted d-block">June 10, 2020</small>
-                                            <p>Laparoscopic cholecystectomy performed at Renew Wellness</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Prescriptions Module -->
-            <div id="prescriptions-module" class="module-container">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-prescription text-success me-2"></i>
-                            Prescription History
-                        </h5>
-                        <button class="btn btn-sm btn-primary" onclick="showAddPrescriptionModal()">
-                            <i class="fas fa-plus me-1"></i>New Prescription
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Medication</th>
-                                        <th>Dosage</th>
-                                        <th>Duration</th>
-                                        <th>Prescribed By</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Jan 25, 2024</td>
-                                        <td>Lisinopril</td>
-                                        <td>10mg daily</td>
-                                        <td>30 days</td>
-                                        <td>Dr. Sarah Johnson</td>
-                                        <td><span class="badge bg-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewPrescription('PR001')">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Jan 20, 2024</td>
-                                        <td>Metformin</td>
-                                        <td>500mg twice daily</td>
-                                        <td>90 days</td>
-                                        <td>Dr. Michael Chen</td>
-                                        <td><span class="badge bg-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewPrescription('PR002')">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Jan 15, 2024</td>
-                                        <td>Amoxicillin</td>
-                                        <td>500mg three times daily</td>
-                                        <td>7 days</td>
-                                        <td>Dr. Sarah Johnson</td>
-                                        <td><span class="badge bg-secondary">Completed</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewPrescription('PR003')">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Billing & Payments Module -->
-            <div id="billing-module" class="module-container">
-                <!-- Billing Summary Cards -->
+                <!-- Vitals Summary Cards -->
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card bg-primary text-white">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-0">Total Billed</h6>
-                                        <h3 class="mb-0">$1,400.00</h3>
+                                        <h6 class="mb-0">Total Vitals</h6>
+                                        <h3 class="mb-0">{{ $contextData['vitals']['vitals']->count() }}</h3>
                                     </div>
                                     <div class="align-self-center">
-                                        <i class="fas fa-file-invoice-dollar fa-2x opacity-75"></i>
+                                        <i class="fas fa-heartbeat fa-2x opacity-75"></i>
                                     </div>
                                 </div>
                             </div>
@@ -397,11 +555,11 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-0">Total Paid</h6>
-                                        <h3 class="mb-0">$350.00</h3>
+                                        <h6 class="mb-0">Latest BP</h6>
+                                        <h3 class="mb-0">{{ $contextData['vitals']['latest_vitals']['blood_pressure'] ?? 'N/A' }}</h3>
                                     </div>
                                     <div class="align-self-center">
-                                        <i class="fas fa-money-bill-wave fa-2x opacity-75"></i>
+                                        <i class="fas fa-stethoscope fa-2x opacity-75"></i>
                                     </div>
                                 </div>
                             </div>
@@ -412,11 +570,11 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-0">Outstanding</h6>
-                                        <h3 class="mb-0">$1,050.00</h3>
+                                        <h6 class="mb-0">Latest Pulse Rate</h6>
+                                        <h3 class="mb-0">{{ $contextData['vitals']['latest_vitals']['pulse_rate'] ?? 'N/A' }}</h3>
                                     </div>
                                     <div class="align-self-center">
-                                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                                        <i class="fas fa-heart-pulse fa-2x opacity-75"></i>
                                     </div>
                                 </div>
                             </div>
@@ -427,12 +585,304 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-0">Active Bills</h6>
-                                        <h3 class="mb-0">3</h3>
+                                        <h6 class="mb-0">Latest Temp</h6>
+                                        <h3 class="mb-0">{{ $contextData['vitals']['latest_vitals']['temperature'] ?? 'N/A' }}</h3>
                                     </div>
                                     <div class="align-self-center">
-                                        <i class="fas fa-list fa-2x opacity-75"></i>
+                                        <i class="fas fa-thermometer-half fa-2x opacity-75"></i>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-heartbeat text-danger me-2"></i>
+                            Vitals History
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if($contextData['vitals']['has_vitals'])
+                            <div class="vitals-timeline">
+                                @foreach($contextData['vitals']['vitals'] as $vital)
+                                    <div class="vital-entry">
+                                        <div class="vital-date">{{ $vital['visit_date'] }} @if($vital['visit_time'])- {{ $vital['visit_time'] }}@endif</div>
+                                        <div class="vital-metrics">
+                                            @if($vital['blood_pressure'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['blood_pressure'] }}</div>
+                                                    <div class="label">Blood Pressure</div>
+                                                </div>
+                                            @endif
+                                            @if($vital['pulse_rate'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['pulse_rate'] }}</div>
+                                                    <div class="label">Pulse Rate</div>
+                                                </div>
+                                            @endif
+                                            @if($vital['temperature'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['temperature'] }}</div>
+                                                    <div class="label">Temperature</div>
+                                                </div>
+                                            @endif
+                                            @if($vital['oxygen_saturation'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['oxygen_saturation'] }}</div>
+                                                    <div class="label">O₂ Saturation</div>
+                                                </div>
+                                            @endif
+                                            @if($vital['respiratory_rate'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['respiratory_rate'] }}</div>
+                                                    <div class="label">Respiratory Rate</div>
+                                                </div>
+                                            @endif
+                                            @if($vital['weight'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['weight'] }}</div>
+                                                    <div class="label">Weight</div>
+                                                </div>
+                                            @endif
+                                            @if($vital['height'])
+                                                <div class="vital-metric">
+                                                    <div class="value">{{ $vital['height'] }}</div>
+                                                    <div class="label">Height</div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-heartbeat fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Vitals Recorded</h5>
+                                <p class="text-muted">No vital signs have been recorded for this patient yet.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <!-- Service Results Module -->
+            <div id="service-results-module" class="module-container">
+                <!-- Service Results Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card stat-card bg-white border-start border-primary border-4 shadow-sm">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Total Results</h6>
+                                <h3 class="mb-0 fw-bold">{{ $contextData['service_results']['total_results'] }}</h3>
+                                <div class="mt-2 small text-primary">
+                                    <i class="fas fa-flask me-1"></i> Lifetime tests
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card bg-white border-start border-success border-4 shadow-sm">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Approved</h6>
+                                <h3 class="mb-0 fw-bold text-success">{{ $contextData['service_results']['approved_results'] }}</h3>
+                                <div class="mt-2 small text-success">
+                                    <i class="fas fa-check-circle me-1"></i> Validated reports
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stat-card bg-white border-start border-warning border-4 shadow-sm">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Pending Actions</h6>
+                                <h3 class="mb-0 fw-bold text-warning">{{ $contextData['service_results']['pending_results'] }}</h3>
+                                <div class="mt-2 small text-warning">
+                                    <i class="fas fa-clock me-1"></i> Requiring review
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm border-0">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-microscope text-primary me-2"></i>
+                            Laboratory & Service Results
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Timestamp</th>
+                                        <th>Service/Package Name</th>
+                                        <th>Result Value</th>
+                                        <th class="pe-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            @if($contextData['service_results']['has_results'])
+                                @foreach($contextData['service_results']['service_results'] as $result)
+                                    <tr onclick="showServiceResultEditInfo()" style="cursor: pointer;" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ') showServiceResultEditInfo()">
+                                        <td class="ps-4">
+                                            {{ $result['recorded_at'] }}
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-dark">{{ $result['service_name'] }}</span>
+                                            <br>
+                                            <small class="text-muted">{{ ucfirst($result['result_type']) }} Result</small>
+                                        </td>
+                                        <td>
+                                            @if($result['result_type'] === 'numeric')
+                                                <span class="fw-bold h6 mb-0">{{ $result['result_value'] }}</span>
+                                            @elseif($result['result_type'] === 'text')
+                                                <span class="text-truncate d-inline-block" style="max-width: 250px;">{{ $result['result_value'] }}</span>
+                                            @else
+                                                <span class="badge bg-light text-dark border"><i class="fas fa-file-pdf me-1 text-danger"></i> Attachment</span>
+                                            @endif
+                                        </td>
+                                        <td class="pe-4">
+                                            @php
+                                                $statusClass = [
+                                                    'approved' => 'success',
+                                                    'pending_approval' => 'warning',
+                                                    'draft' => 'info',
+                                                    'rejected' => 'danger'
+                                                ][$result['status']] ?? 'secondary';
+                                            @endphp
+                                            <span class="badge rounded-pill bg-{{ $statusClass }}-soft text-{{ $statusClass }} px-3">
+                                                {{ ucfirst(str_replace('_', ' ', $result['status'])) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @else
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fas fa-microscope fa-3x mb-3 opacity-25"></i>
+                                        <p>No laboratory or service results found for this patient.</p>
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical History Module -->
+            <div id="medical-history-module" class="module-container">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-history fa-4x text-muted opacity-25"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark">Medical History Tracking</h4>
+                        <p class="text-muted mx-auto" style="max-width: 500px;">
+                            We are currently building a comprehensive medical history management system. 
+                            Soon, you'll be able to track chronic conditions, allergies, surgeries, and more right here.
+                        </p>
+                        <div class="mt-4">
+                            <span class="badge rounded-pill bg-primary-soft text-primary px-4 py-2">
+                                <i class="fas fa-tools me-2"></i>Coming Soon
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prescriptions Module -->
+            <div id="prescriptions-module" class="module-container">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-prescription fa-4x text-muted opacity-25"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark">Prescription Management</h4>
+                        <p class="text-muted mx-auto" style="max-width: 500px;">
+                            A new prescription engine is on its way! You will soon be able to issue, 
+                            track, and print digital prescriptions for your patients.
+                        </p>
+                        <div class="mt-4">
+                            <span class="badge rounded-pill bg-success-soft text-success px-4 py-2">
+                                <i class="fas fa-flask me-2"></i>Under Development
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medications Module -->
+            <div id="medications-module" class="module-container">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-pills fa-4x text-muted opacity-25"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark">Medication Tracking</h4>
+                        <p class="text-muted mx-auto" style="max-width: 500px;">
+                            Keep track of active and past medications effortlessly. This module will 
+                            allow you to monitor patient adherence and drug interactions.
+                        </p>
+                        <div class="mt-4">
+                            <span class="badge rounded-pill bg-warning-soft text-warning px-4 py-2">
+                                <i class="fas fa-clock me-2"></i>Stay Tuned
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing & Payments Module -->
+            <div id="billing-module" class="module-container">
+                <!-- Billing Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-white border-start border-primary border-4">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Total Billed</h6>
+                                <h3 class="mb-0 fw-bold">GH₵{{ $contextData['billing']['total_billed'] }}</h3>
+                                <div class="mt-2 small text-primary">
+                                    <i class="fas fa-file-invoice-dollar me-1"></i> Lifetime billing
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-white border-start border-success border-4">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Total Paid</h6>
+                                <h3 class="mb-0 fw-bold text-success">GH₵{{ $contextData['billing']['total_paid'] }}</h3>
+                                <div class="mt-2 small text-success">
+                                    <i class="fas fa-check-circle me-1"></i> Total collections
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-white border-start border-warning border-4">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Outstanding</h6>
+                                <h3 class="mb-0 fw-bold text-warning">GH₵{{ $contextData['billing']['outstanding_balance'] }}</h3>
+                                <div class="mt-2 small text-warning">
+                                    <i class="fas fa-clock me-1"></i> Pending payments
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-white border-start border-info border-4">
+                            <div class="card-body p-0">
+                                <h6 class="text-muted text-uppercase small fw-bold">Bills Summary</h6>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="badge bg-success">Paid: {{ $contextData['billing']['payment_summary']['paid_bills'] }}</span>
+                                    <span class="badge bg-warning">Pending: {{ $contextData['billing']['payment_summary']['pending_bills'] + $contextData['billing']['payment_summary']['partial_bills'] }}</span>
                                 </div>
                             </div>
                         </div>
@@ -440,151 +890,145 @@
                 </div>
 
                 <!-- Bills Table -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                        <h5 class="mb-0 fw-bold">
                             <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
-                            Patient Bills
+                            Recent Invoices
                         </h5>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-primary" onclick="showCreateBillModal()">
-                                <i class="fas fa-plus me-1"></i>Create Bill
-                            </button>
+                            <a href="{{ route('billing.user') }}?patient={{ $patient->patient_code }}" class="btn btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i>Billing Dashboard
+                            </a>
                             <button class="btn btn-outline-secondary" onclick="refreshBills()">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
                                     <tr>
-                                        <th>Bill ID</th>
-                                        <th>Type</th>
+                                        <th class="ps-4">Invoice #</th>
                                         <th>Date</th>
                                         <th>Total Amount</th>
-                                        <th>Amount Paid</th>
+                                        <th>Paid</th>
                                         <th>Balance</th>
                                         <th>Status</th>
-                                        <th class="text-center">Actions</th>
+                                        <th class="text-center pe-4">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="billsTableBody">
+                                <tbody>
+                            @if($contextData['billing']['has_bills'])
+                                @foreach($contextData['billing']['bills'] as $bill)
                                     <tr>
-                                        <td><span class="badge bg-primary fs-6">B001</span></td>
-                                        <td><span class="badge bg-info">Package</span></td>
-                                        <td>Jan 25, 2024</td>
-                                        <td class="fw-bold text-primary">$500.00</td>
-                                        <td class="text-success fw-semibold">$200.00</td>
-                                        <td class="text-warning fw-bold">$300.00</td>
+                                        <td class="ps-4">
+                                            <span class="fw-bold">#{{ str_pad($bill['bill_id'], 6, '0', STR_PAD_LEFT) }}</span>
+                                            <br>
+                                            <small class="text-muted">{{ ucfirst($bill['bill_type']) }}</small>
+                                        </td>
+                                        <td>{{ $bill['created_at'] }}</td>
+                                        <td class="fw-bold">GH₵{{ $bill['total_amount'] }}</td>
+                                        <td class="text-success fw-semibold">GH₵{{ $bill['amount_paid'] }}</td>
+                                        <td class="text-{{ $bill['balance'] > 0 ? 'warning' : 'success' }} fw-bold">GH₵{{ $bill['balance'] }}</td>
                                         <td>
-                                            <span class="badge bg-warning">Partially Paid</span>
+                                            @php
+                                                $statusClass = [
+                                                    'paid' => 'success',
+                                                    'partial' => 'info',
+                                                    'pending' => 'warning',
+                                                    'overdue' => 'danger'
+                                                ][$bill['status']] ?? 'secondary';
+                                            @endphp
+                                            <span class="badge rounded-pill bg-{{ $statusClass }}-soft text-{{ $statusClass }} px-3">
+                                                {{ ucfirst($bill['status']) }}
+                                            </span>
                                         </td>
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-outline-primary" onclick="viewBillDetails('B001')" title="View Details">
-                                                    <i class="fas fa-eye"></i>
+                                        <td class="text-center pe-4">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-light" onclick="viewBillDetails('{{ $bill['bill_id'] }}')" title="View">
+                                                    <i class="fas fa-eye text-primary"></i>
                                                 </button>
-                                                <button class="btn btn-outline-success" onclick="showPaymentModal('B001')" title="Make Payment">
-                                                    <i class="fas fa-money-bill-wave"></i>
-                                                </button>
-                                                <button class="btn btn-outline-info" onclick="printBill('B001')" title="Print Bill">
-                                                    <i class="fas fa-print"></i>
+                                                @if($bill['status'] !== 'paid')
+                                                    <button class="btn btn-light" onclick="showPaymentModal('{{ $bill['bill_id'] }}')" title="Pay">
+                                                        <i class="fas fa-money-bill-wave text-success"></i>
+                                                    </button>
+                                                @endif
+                                                <button class="btn btn-light" onclick="printBill('{{ $bill['bill_id'] }}')" title="Print">
+                                                    <i class="fas fa-print text-info"></i>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td><span class="badge bg-primary fs-6">B002</span></td>
-                                        <td><span class="badge bg-secondary">Service</span></td>
-                                        <td>Jan 20, 2024</td>
-                                        <td class="fw-bold text-primary">$150.00</td>
-                                        <td class="text-success fw-semibold">$150.00</td>
-                                        <td class="text-success fw-bold">$0.00</td>
-                                        <td>
-                                            <span class="badge bg-success">Fully Paid</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-outline-primary" onclick="viewBillDetails('B002')" title="View Details">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-outline-success" disabled title="Already Paid">
-                                                    <i class="fas fa-money-bill-wave"></i>
-                                                </button>
-                                                <button class="btn btn-outline-info" onclick="printBill('B002')" title="Print Bill">
-                                                    <i class="fas fa-print"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-primary fs-6">B003</span></td>
-                                        <td><span class="badge bg-warning text-dark">Combined</span></td>
-                                        <td>Jan 15, 2024</td>
-                                        <td class="fw-bold text-primary">$750.00</td>
-                                        <td class="text-success fw-semibold">$0.00</td>
-                                        <td class="text-danger fw-bold">$750.00</td>
-                                        <td><span class="badge bg-danger">Unpaid</span></td>
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-outline-primary" onclick="viewBillDetails('B003')" title="View Details">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-outline-success" onclick="showPaymentModal('B003')" title="Make Payment">
-                                                    <i class="fas fa-money-bill-wave"></i>
-                                                </button>
-                                                <button class="btn btn-outline-info" onclick="printBill('B003')" title="Print Bill">
-                                                    <i class="fas fa-print"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
+                                @endforeach
+                            @else
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="fas fa-file-invoice fa-3x mb-3 opacity-25"></i>
+                                        <p>No billing records found for this patient.</p>
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
                 <!-- Recent Payments -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold">
                             <i class="fas fa-receipt text-success me-2"></i>
-                            Recent Payments
+                            Recent Payment History
                         </h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
                                     <tr>
-                                        <th>Payment ID</th>
-                                        <th>Bill ID</th>
-                                        <th>Amount</th>
-                                        <th>Method</th>
+                                        <th class="ps-4">Receipt #</th>
                                         <th>Date</th>
-                                        <th>Status</th>
+                                        <th>Method</th>
+                                        <th>Amount Paid</th>
+                                        <th class="pe-4">Staff</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td><span class="badge bg-success">P001</span></td>
-                                        <td>B001</td>
-                                        <td class="text-success fw-bold">$200.00</td>
-                                        <td><span class="badge bg-info">Credit Card</span></td>
-                                        <td>Jan 25, 2024</td>
-                                        <td><span class="badge bg-success">Completed</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td><span class="badge bg-success">P002</span></td>
-                                        <td>B002</td>
-                                        <td class="text-success fw-bold">$150.00</td>
-                                        <td><span class="badge bg-secondary">Cash</span></td>
-                                        <td>Jan 20, 2024</td>
-                                        <td><span class="badge bg-success">Completed</span></td>
-                                    </tr>
+                                    @php $hasPayments = false; @endphp
+                                    @if($contextData['billing']['has_bills'])
+                                        @foreach($contextData['billing']['bills'] as $bill)
+                                            @if($bill['payments'])
+                                                @foreach($bill['payments'] as $payment)
+                                                    @php $hasPayments = true; @endphp
+                                                    <tr>
+                                                        <td class="ps-4">
+                                                            <span class="fw-bold">REC-{{ str_pad($payment['payment_id'], 4, '0', STR_PAD_LEFT) }}</span>
+                                                            <br>
+                                                            <small class="text-muted">Invoice #{{ str_pad($bill['bill_id'], 6, '0', STR_PAD_LEFT) }}</small>
+                                                        </td>
+                                                        <td>{{ $payment['payment_date'] }}</td>
+                                                        <td>
+                                                            <span class="badge bg-light text-dark border">
+                                                                <i class="fas fa-{{ $payment['payment_method'] === 'cash' ? 'money-bill' : ($payment['payment_method'] === 'mobile_money' ? 'mobile-alt' : 'university') }} me-1"></i>
+                                                                {{ ucfirst(str_replace('_', ' ', $payment['payment_method'])) }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-success fw-bold">GH₵{{ $payment['amount_paid'] }}</td>
+                                                        <td class="pe-4">{{ $payment['received_by_name'] ?? 'System' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            @endif
+                                        @endforeach
+                                    @endif
+                                    
+                                    @if(!$hasPayments)
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">No payment transactions recorded.</td>
+                                        </tr>
+                                    @endif
                                 </tbody>
                             </table>
                         </div>
@@ -605,77 +1049,10 @@
                         </button>
                     </div>
                     <div class="card-body">
-                        <div class="medication-card">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="medication-name">Lisinopril</div>
-                                    <div class="dosage-info">
-                                        <span><i class="fas fa-pills me-1"></i>10mg</span>
-                                        <span><i class="fas fa-clock me-1"></i>Once daily</span>
-                                        <span><i class="fas fa-calendar me-1"></i>Started: Jan 25, 2024</span>
-                                    </div>
-                                    <small class="text-muted">For: Hypertension</small>
-                                </div>
-                                <div>
-                                    <span class="medication-status active">Active</span>
-                                    <div class="btn-group btn-group-sm mt-2">
-                                        <button class="btn btn-outline-primary" onclick="editMedication('MED001')">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-outline-warning" onclick="discontinueMedication('MED001')">
-                                            <i class="fas fa-stop"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="medication-card">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="medication-name">Metformin</div>
-                                    <div class="dosage-info">
-                                        <span><i class="fas fa-pills me-1"></i>500mg</span>
-                                        <span><i class="fas fa-clock me-1"></i>Twice daily</span>
-                                        <span><i class="fas fa-calendar me-1"></i>Started: Jan 20, 2024</span>
-                                    </div>
-                                    <small class="text-muted">For: Type 2 Diabetes</small>
-                                </div>
-                                <div>
-                                    <span class="medication-status active">Active</span>
-                                    <div class="btn-group btn-group-sm mt-2">
-                                        <button class="btn btn-outline-primary" onclick="editMedication('MED002')">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-outline-warning" onclick="discontinueMedication('MED002')">
-                                            <i class="fas fa-stop"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="medication-card">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="medication-name">Atorvastatin</div>
-                                    <div class="dosage-info">
-                                        <span><i class="fas fa-pills me-1"></i>20mg</span>
-                                        <span><i class="fas fa-clock me-1"></i>Once daily</span>
-                                        <span><i class="fas fa-calendar me-1"></i>Started: Jan 15, 2024</span>
-                                    </div>
-                                    <small class="text-muted">For: High Cholesterol</small>
-                                </div>
-                                <div>
-                                    <span class="medication-status active">Active</span>
-                                    <div class="btn-group btn-group-sm mt-2">
-                                        <button class="btn btn-outline-primary" onclick="editMedication('MED003')">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-outline-warning" onclick="discontinueMedication('MED003')">
-                                            <i class="fas fa-stop"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="text-center py-5">
+                            <i class="fas fa-pills fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">Coming Soon</h4>
+                            <p class="text-muted">Medication management will be available in a future update.</p>
                         </div>
                     </div>
                 </div>
@@ -1099,8 +1476,8 @@
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Heart Rate</label>
-                                <input type="number" class="form-control" id="heartRate" placeholder="72">
+                                <label class="form-label">Pulse Rate (bpm)</label>
+                                <input type="number" class="form-control" id="pulseRate" placeholder="72">
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -1418,6 +1795,8 @@ function loadPatientData(patientId) {
 
 function switchModule(moduleName) {
     event?.preventDefault();
+    console.log('switchModule called with:', moduleName);
+    
     document.querySelectorAll(".patient-nav-tabs .nav-link").forEach(link => link.classList.remove("active"));
     const targetNav = document.querySelector(`[data-module="${moduleName}"]`);
     if (targetNav) {
@@ -1427,7 +1806,25 @@ function switchModule(moduleName) {
     document.querySelectorAll(".module-container").forEach(container => container.classList.remove("active"));
     const targetModule = document.getElementById(`${moduleName}-module`);
     if (targetModule) {
+        console.log('Adding active class to:', `${moduleName}-module`);
         targetModule.classList.add("active");
+        
+        // Additional debugging for billing module
+        if (moduleName === 'billing') {
+            console.log('Billing module activated!');
+            console.log('Module element:', targetModule);
+            console.log('Module classes:', targetModule.className);
+            console.log('Module display style:', window.getComputedStyle(targetModule).display);
+            
+            // Check for summary cards
+            const cards = targetModule.querySelectorAll('.card');
+            console.log('Cards found in billing module:', cards.length);
+            cards.forEach((card, index) => {
+                console.log(`Card ${index + 1}:`, card.className, 'Display:', window.getComputedStyle(card).display);
+            });
+        }
+    } else {
+        console.error('Module not found:', `${moduleName}-module`);
     }
 
     currentModule = moduleName;
@@ -1448,7 +1845,6 @@ function loadModuleData(moduleName) {
     const endpointMap = {
         'overview': 'overview',
         'vitals': 'vitals',
-        'billing': 'billing',
         'medical-history': 'medical-history'
     };
     
@@ -1478,6 +1874,27 @@ function loadModuleData(moduleName) {
 }
 
 function updateModuleContent(moduleName, data) {
+    console.log('updateModuleContent called for:', moduleName, 'with data:', data);
+    
+    // Debug billing summary cards
+    if (moduleName === 'billing') {
+        const totalBilledCard = document.querySelector('.bg-primary');
+        const totalPaidCard = document.querySelector('.bg-success');
+        const outstandingCard = document.querySelector('.bg-warning');
+        const activeBillsCard = document.querySelector('.bg-info');
+        
+        console.log('Billing cards found:', {
+            totalBilled: !!totalBilledCard,
+            totalPaid: !!totalPaidCard,
+            outstanding: !!outstandingCard,
+            activeBills: !!activeBillsCard
+        });
+        
+        if (totalBilledCard) {
+            console.log('Total billed card content:', totalBilledCard.innerHTML);
+        }
+    }
+    
     switch(moduleName) {
         case 'overview':
             updateOverviewModule(data);
@@ -1486,10 +1903,38 @@ function updateModuleContent(moduleName, data) {
             updateVitalsModule(data);
             break;
         case 'billing':
-            updateBillingModule(data);
+            // Update billing cards with correct API data since server data is wrong
+            console.log('Billing API data received:', data);
+            
+            // Update summary cards with correct data
+            const totalBilledCard = document.querySelector('.bg-primary h3');
+            const totalPaidCard = document.querySelector('.bg-success h3');
+            const outstandingCard = document.querySelector('.bg-warning h3');
+            const totalBillsCard = document.querySelector('.bg-info h3');
+            
+            if (totalBilledCard && data.total_billed) {
+                totalBilledCard.textContent = `$${data.total_billed}`;
+                console.log('Updated total billed to:', `$${data.total_billed}`);
+            }
+            if (totalPaidCard && data.total_paid) {
+                totalPaidCard.textContent = `$${data.total_paid}`;
+                console.log('Updated total paid to:', `$${data.total_paid}`);
+            }
+            if (outstandingCard && data.outstanding_balance) {
+                outstandingCard.textContent = `$${data.outstanding_balance}`;
+                console.log('Updated outstanding to:', `$${data.outstanding_balance}`);
+            }
+            if (totalBillsCard && data.payment_summary) {
+                const totalBills = data.payment_summary.paid_bills + data.payment_summary.partial_bills + data.payment_summary.pending_bills;
+                totalBillsCard.textContent = totalBills;
+                console.log('Updated total bills to:', totalBills);
+            }
             break;
         case 'medical-history':
             updateMedicalHistoryModule(data);
+            break;
+        case 'service-results':
+            updateServiceResultsModule(data);
             break;
         default:
             console.log('No update handler for module:', moduleName);
@@ -1555,7 +2000,7 @@ function updateVitalsModule(data) {
             <td>${vital.visit_time || 'N/A'}</td>
             <td>${vital.temperature || 'N/A'}</td>
             <td>${vital.blood_pressure || 'N/A'}</td>
-            <td>${vital.heart_rate || 'N/A'}</td>
+            <td>${vital.pulse_rate || 'N/A'}</td>
             <td>${vital.oxygen_saturation || 'N/A'}</td>
             <td>${vital.respiratory_rate || 'N/A'}</td>
             <td>${vital.weight || 'N/A'}</td>
@@ -1604,72 +2049,9 @@ function updateMedicalHistoryModule(data) {
 }
 
 function updateBillingModule(data) {
-    // Update billing summary cards
-    const totalBilledElement = document.querySelector('.bg-primary h3');
-    const totalPaidElement = document.querySelector('.bg-success h3');
-    const outstandingElement = document.querySelector('.bg-warning h3');
-    const activeBillsElement = document.querySelector('.bg-info h3');
-    
-    if (totalBilledElement) totalBilledElement.textContent = `GH₵${data.total_billed || '0.00'}`;
-    if (totalPaidElement) totalPaidElement.textContent = `GH₵${data.total_paid || '0.00'}`;
-    if (outstandingElement) outstandingElement.textContent = `GH₵${data.outstanding_balance || '0.00'}`;
-    if (activeBillsElement) activeBillsElement.textContent = data.payment_summary.pending_bills || 0;
-    
-    // Update bills table
-    const billsTableBody = document.getElementById('billsTableBody');
-    if (billsTableBody && data.bills) {
-        billsTableBody.innerHTML = data.bills.map(bill => {
-            const statusClass = bill.status === 'paid' ? 'success' : bill.status === 'partial' ? 'warning' : 'danger';
-            const statusText = bill.status === 'paid' ? 'Fully Paid' : bill.status === 'partial' ? 'Partially Paid' : 'Unpaid';
-            
-            return `
-                <tr>
-                    <td><span class="badge bg-primary fs-6">B${bill.bill_id}</span></td>
-                    <td><span class="badge bg-info">${bill.bill_type}</span></td>
-                    <td>${bill.created_at}</td>
-                    <td class="fw-bold text-primary">GH₵${bill.total_amount}</td>
-                    <td class="fw-bold text-success">GH₵${bill.amount_paid}</td>
-                    <td class="fw-bold text-warning">GH₵${bill.balance}</td>
-                    <td><span class="badge bg-${statusClass}">${statusText}</span></td>
-                    <td>
-                        <button class="btn btn-outline-primary btn-sm me-1" onclick="viewBillDetails(${bill.bill_id})" title="View Details">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${bill.balance > 0 ? `
-                            <button class="btn btn-outline-success btn-sm" onclick="makePayment(${bill.bill_id})" title="Make Payment">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </button>
-                        ` : ''}
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-    
-    // Update payment history
-    const paymentHistoryBody = document.getElementById('paymentHistoryBody');
-    if (paymentHistoryBody && data.bills) {
-        const allPayments = data.bills.flatMap(bill => bill.payments || []);
-        
-        if (allPayments.length === 0) {
-            paymentHistoryBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center text-muted">No payments recorded</td>
-                </tr>
-            `;
-        } else {
-            paymentHistoryBody.innerHTML = allPayments.map(payment => `
-                <tr>
-                    <td><span class="badge bg-success">P${payment.payment_id}</span></td>
-                    <td>${payment.payment_date}</td>
-                    <td>GH₵${payment.amount_paid}</td>
-                    <td>${payment.payment_method}</td>
-                    <td>${payment.received_by}</td>
-                    <td>${payment.notes || '-'}</td>
-                </tr>
-            `).join('');
-        }
-    }
+    // Billing module is already rendered with real data from server
+    // No need to update via JavaScript
+    console.log('Billing module data loaded:', data);
 }
 
 function updateVisitsModule(data) {
@@ -1677,91 +2059,80 @@ function updateVisitsModule(data) {
     console.log('Visits data:', data);
 }
 
+function showServiceResultEditInfo() {
+    Swal.fire({
+        title: 'Note',
+        text: 'To modify this result, please navigate to Visit & Attendance → search by visiting date and patient code.',
+        icon: 'info',
+        timer: 5000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+        background: '#fff',
+        color: '#333',
+        iconColor: '#3085d6',
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+}
+
 function updateServiceResultsModule(data) {
-    const serviceResultsGrid = document.getElementById('serviceResultsGrid');
+    const tableBody = document.querySelector('#service-results-module tbody');
+    if (!tableBody) return;
     
-    if (!serviceResultsGrid) return;
-    
-    if (data && data.length > 0) {
-        // Group results by visit
-        const groupedResults = {};
-        data.forEach(result => {
-            const visitId = result.visit_id || 'no-visit';
-            const visitDate = result.visit && result.visit.visit_date ? 
-                new Date(result.visit.visit_date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                }) : 'No Visit';
+    if (data.has_results) {
+        tableBody.innerHTML = data.service_results.map(result => {
+            let statusClass = 'secondary';
+            if (result.status === 'approved') statusClass = 'success';
+            else if (result.status === 'pending_approval') statusClass = 'warning';
+            else if (result.status === 'draft') statusClass = 'info';
+            else if (result.status === 'rejected') statusClass = 'danger';
             
-            if (!groupedResults[visitId]) {
-                groupedResults[visitId] = {
-                    visitDate: visitDate,
-                    visitId: visitId,
-                    results: []
-                };
+            let resultDisplay = '';
+            if (result.result_type === 'numeric') {
+                resultDisplay = `<span class="fw-bold h6 mb-0">${result.result_value}</span>`;
+            } else if (result.result_type === 'text') {
+                resultDisplay = `<span class="text-truncate d-inline-block" style="max-width: 250px;">${result.result_value}</span>`;
+            } else {
+                resultDisplay = `<span class="badge bg-light text-dark border"><i class="fas fa-file-pdf me-1 text-danger"></i> Attachment</span>`;
             }
-            groupedResults[visitId].results.push(result);
-        });
-        
-        // Generate HTML for grouped results using original lab-report-card styling
-        let html = '';
-        Object.values(groupedResults).forEach(group => {
-            // Add visit header
-            html += `
-                <div class="mb-3">
-                    <h6 class="text-muted">
-                        <i class="fas fa-calendar-alt me-2"></i>
-                        Visit: ${group.visitDate}
-                        <small class="ms-2">(${group.results.length} results)</small>
-                    </h6>
-                </div>
+
+            return `
+                <tr onclick="showServiceResultEditInfo()" style="cursor: pointer;" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ') showServiceResultEditInfo()">
+                    <td class="ps-4">
+                        ${result.recorded_at}
+                    </td>
+                    <td>
+                        <span class="fw-bold text-dark">${result.service_name}</span>
+                        <br>
+                        <small class="text-muted">${result.result_type.charAt(0).toUpperCase() + result.result_type.slice(1)} Result</small>
+                    </td>
+                    <td>${resultDisplay}</td>
+                    <td class="pe-4">
+                        <span class="badge rounded-pill bg-${statusClass}-soft text-${statusClass} px-3">
+                            ${result.status.charAt(0).toUpperCase() + result.status.slice(1).replace('_', ' ')}
+                        </span>
+                    </td>
+                </tr>
             `;
-            
-            // Add result cards using original lab-report-card styling
-            group.results.forEach(result => {
-                const statusClass = result.status === 'approved' ? 'normal' : result.status === 'draft' ? 'abnormal' : 'pending';
-                const serviceName = result.service ? result.service.service_name : 'Unknown Service';
-                const resultDate = result.created_at ? new Date(result.created_at).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                }) : 'N/A';
-                
-                // Get the appropriate result value
-                let resultValue = 'N/A';
-                if (result.result_type === 'text') {
-                    resultValue = result.result_text || 'N/A';
-                } else if (result.result_type === 'numeric') {
-                    resultValue = result.result_numeric || 'N/A';
-                } else if (result.result_type === 'file') {
-                    resultValue = result.result_file_name || 'File uploaded';
-                }
-                
-                html += `
-                    <div class="lab-report-card" onclick="viewServiceResult(${result.id})">
-                        <div class="report-type">${serviceName}</div>
-                        <div class="report-date">${resultDate}</div>
-                        <div class="report-status ${statusClass}">${result.status}</div>
-                        <div class="mt-2">
-                            <small class="text-muted">Type: ${result.result_type}</small><br>
-                            <small class="text-muted">Value: ${resultValue}</small>
-                        </div>
-                    </div>
-                `;
-            });
-        });
-        
-        serviceResultsGrid.innerHTML = html;
+        }).join('');
     } else {
-        serviceResultsGrid.innerHTML = `
-            <div class="text-center text-muted py-4">
-                <i class="fas fa-flask fa-2x mb-2"></i>
-                <p>No service results found for this patient</p>
-                <small class="text-muted">Results are added when services are performed during visits</small>
-            </div>
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center py-5 text-muted">
+                    <i class="fas fa-microscope fa-3x mb-3 opacity-25"></i>
+                    <p>No laboratory or service results found for this patient.</p>
+                </td>
+            </tr>
         `;
     }
+}
+
+function printServiceResult(resultId) {
+    window.open(`/service-results/${resultId}/print`, '_blank');
 }
 
 let currentServiceResult = null;
@@ -1818,36 +2189,42 @@ function displayServiceResultDetails(result) {
     if (result.status === 'draft') {
         editBtn.style.display = 'inline-block';
     }
+
+    const serviceName = result.service ? result.service.name : (result.package ? result.package.package_name : 'Unknown Service');
     
     content.innerHTML = `
         <div class="row">
             <div class="col-md-6">
-                <h6>Service Information</h6>
+                <h6 class="fw-bold text-muted small text-uppercase mb-3">Service Information</h6>
                 <table class="table table-sm">
                     <tr>
-                        <td><strong>Service:</strong></td>
-                        <td>${result.service ? result.service.service_name : 'Unknown Service'}</td>
+                        <td width="40%"><strong>Service:</strong></td>
+                        <td>${serviceName}</td>
                     </tr>
                     <tr>
                         <td><strong>Result Type:</strong></td>
-                        <td>${result.result_type}</td>
+                        <td>${result.result_type.charAt(0).toUpperCase() + result.result_type.slice(1)}</td>
                     </tr>
                     <tr>
                         <td><strong>Status:</strong></td>
-                        <td><span class="badge bg-${result.status === 'approved' ? 'success' : result.status === 'draft' ? 'warning' : 'secondary'}">${result.status}</span></td>
+                        <td>
+                            <span class="badge rounded-pill bg-${result.status === 'approved' ? 'success' : (result.status === 'draft' ? 'info' : 'warning')}-soft text-${result.status === 'approved' ? 'success' : (result.status === 'draft' ? 'info' : 'warning')} px-3">
+                                ${result.status.charAt(0).toUpperCase() + result.status.slice(1).replace('_', ' ')}
+                            </span>
+                        </td>
                     </tr>
                 </table>
             </div>
             <div class="col-md-6">
-                <h6>Visit Information</h6>
+                <h6 class="fw-bold text-muted small text-uppercase mb-3">Visit & Staff</h6>
                 <table class="table table-sm">
                     <tr>
-                        <td><strong>Visit Date:</strong></td>
-                        <td>${result.visit && result.visit.visit_date ? new Date(result.visit.visit_date).toLocaleDateString() : 'N/A'}</td>
+                        <td width="40%"><strong>Visit Code:</strong></td>
+                        <td>${result.visit ? result.visit.visit_code : 'N/A'}</td>
                     </tr>
                     <tr>
                         <td><strong>Recorded By:</strong></td>
-                        <td>${result.recorder ? result.recorder.name : 'N/A'}</td>
+                        <td>${result.recorder ? result.recorder.name : 'System'}</td>
                     </tr>
                     <tr>
                         <td><strong>Recorded At:</strong></td>
@@ -1856,25 +2233,29 @@ function displayServiceResultDetails(result) {
                 </table>
             </div>
         </div>
-        <div class="row mt-3">
+        <div class="row mt-4">
             <div class="col-12">
-                <h6>Result Value</h6>
-                <div class="border rounded p-3 bg-light">
+                <h6 class="fw-bold text-muted small text-uppercase mb-2">Result Value</h6>
+                <div class="p-4 rounded bg-light border">
                     ${result.result_type === 'file' && result.result_file_path ? 
-                        `<a href="/storage/${result.result_file_path}" target="_blank" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-download me-1"></i>Download File
-                        </a>` : 
-                        `<p class="mb-0">${resultValue}</p>`
+                        `<div class="text-center">
+                            <i class="fas fa-file-pdf fa-3x text-danger mb-3"></i>
+                            <p class="fw-bold">${result.result_file_name}</p>
+                            <a href="${appUrl('/storage/' + result.result_file_path)}" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt me-2"></i>Open Attachment
+                            </a>
+                        </div>` : 
+                        `<div class="h5 mb-0 fw-bold">${resultValue}</div>`
                     }
                 </div>
             </div>
         </div>
         ${result.notes ? `
-        <div class="row mt-3">
+        <div class="row mt-4">
             <div class="col-12">
-                <h6>Notes</h6>
-                <div class="border rounded p-3 bg-light">
-                    <p class="mb-0">${result.notes}</p>
+                <h6 class="fw-bold text-muted small text-uppercase mb-2">Clinical Notes</h6>
+                <div class="p-3 rounded bg-light border italic text-muted">
+                    ${result.notes}
                 </div>
             </div>
         </div>

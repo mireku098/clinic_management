@@ -104,7 +104,11 @@
                                     </td>
                                     <td>
                                         <span class="badge bg-{{ $result->status === 'approved' ? 'success' : ($result->status === 'pending_approval' ? 'warning' : 'danger') }}">
-                                            {{ ucfirst($result->result_type) }}
+                                            @if($result->service && $result->service->result_type)
+                                                {{ ucfirst($result->service->result_type) }}
+                                            @else
+                                                {{ ucfirst($result->result_type) }}
+                                            @endif
                                         </span>
                                     </td>
                                     <td>
