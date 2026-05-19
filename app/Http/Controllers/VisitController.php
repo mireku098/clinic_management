@@ -19,15 +19,20 @@ class VisitController extends Controller
     {
         \Log::info('VisitController index method called');
         
-        $query = PatientVisit::with(['patient', 'user', 'services.service', 'package']);
+        $query = PatientVisit::with(['patient', 'user', 'services.service', 'package'])
+            ->where(function ($q) {
+                $q->where('visit_type', '!=', 'appointment')
+                    ->orWhere('status', '!=', 'scheduled');
+            });
         
-        // Search by patient name or code
+        // Search by patient name, code, or phone
         if (request()->filled('patient_search')) {
             $search = request('patient_search');
             $query->whereHas('patient', function ($q) use ($search) {
                 $q->where('first_name', 'like', '%' . $search . '%')
                   ->orWhere('last_name', 'like', '%' . $search . '%')
-                  ->orWhere('patient_code', 'like', '%' . $search . '%');
+                  ->orWhere('patient_code', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%');
             });
         }
         
@@ -374,40 +379,28 @@ class VisitController extends Controller
         }
     }
 
-    public function destroy($id): RedirectResponse
+    public function destroy($id): JsonResponse
     {
         try {
             $visit = PatientVisit::findOrFail($id);
             
-            // Delete related patient services
-            PatientService::where('visit_id', $id)->delete();
-            
-            // Delete related patient packages
-            \App\Models\PatientPackage::where('visit_id', $id)->delete();
-            
-            // Delete the visit
+            // Note: Since we are using SoftDeletes on PatientVisit, 
+            // the following call will only set the deleted_at timestamp.
+            // For auditing purposes, we keep related records as well.
             $visit->delete();
             
-            return redirect()
-                ->route('visits')
-                ->with('swal', [
-                    'icon' => 'success',
-                    'title' => 'Visit Deleted',
-                    'text' => 'Visit record has been deleted successfully.',
-                    'showConfirmButton' => true,
-                ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Visit record has been soft-deleted successfully for auditing purposes.'
+            ]);
                 
         } catch (\Exception $e) {
             \Log::error("Error deleting visit {$id}: " . $e->getMessage());
             
-            return redirect()
-                ->route('visits')
-                ->with('swal', [
-                    'icon' => 'error',
-                    'title' => 'Delete Failed',
-                    'text' => 'Failed to delete visit: ' . $e->getMessage(),
-                    'showConfirmButton' => true,
-                ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete visit: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

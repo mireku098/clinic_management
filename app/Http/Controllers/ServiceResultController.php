@@ -213,6 +213,14 @@ class ServiceResultController extends Controller
                 $message = 'Service result created successfully';
             }
             
+            // Update visit completion status if result was approved
+            if ($serviceResult->status === 'approved' && $serviceResult->visit_id) {
+                $visit = \App\Models\PatientVisit::find($serviceResult->visit_id);
+                if ($visit) {
+                    $visit->updateCompletionStatus();
+                }
+            }
+            
             return response()->json([
                 'success' => true,
                 'message' => $message,
@@ -852,6 +860,14 @@ class ServiceResultController extends Controller
             
             $result->update($data);
             
+            // Update visit completion status if result was approved
+            if ($result->status === 'approved' && $result->visit_id) {
+                $visit = \App\Models\PatientVisit::find($result->visit_id);
+                if ($visit) {
+                    $visit->updateCompletionStatus();
+                }
+            }
+            
             // Check if AJAX request
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
@@ -999,6 +1015,14 @@ class ServiceResultController extends Controller
                 'approved_at' => now(),
                 'approval_notes' => $validated['approval_notes']
             ]);
+            
+            // Update visit completion status if result was approved
+            if ($result->status === 'approved' && $result->visit_id) {
+                $visit = \App\Models\PatientVisit::find($result->visit_id);
+                if ($visit) {
+                    $visit->updateCompletionStatus();
+                }
+            }
             
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([

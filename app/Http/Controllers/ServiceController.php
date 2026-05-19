@@ -40,6 +40,11 @@ class ServiceController extends Controller
     {
         $query = Service::query();
         
+        // Show deleted/trash if requested
+        if ($request->get('view') === 'trash') {
+            $query->onlyTrashed();
+        }
+
         // Search functionality
         if ($request->filled('search')) {
             $searchTerm = $request->search;
@@ -73,16 +78,25 @@ class ServiceController extends Controller
         
         $services = $query->latest()->paginate(12);
         
+        $stats = [
+            'total' => Service::count(),
+            'active' => Service::where('status', 'active')->count(),
+            'inactive' => Service::where('status', 'inactive')->count(),
+            'deleted' => Service::onlyTrashed()->count(),
+            'avg_price' => Service::avg('price') ?: 0
+        ];
+
         // Check if AJAX request
         if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
             return response()->json([
                 'html' => view('services.partials.service-grid', compact('services'))->render(),
                 'pagination' => $services->links()->toHtml(),
-                'count' => $services->total()
+                'count' => $services->total(),
+                'stats' => $stats
             ]);
         }
         
-        return view('services', compact('services'));
+        return view('services', compact('services', 'stats'));
     }
 
     /**
@@ -244,24 +258,18 @@ class ServiceController extends Controller
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
      */
     public function destroy(Request $request, $id)
     {
         try {
             $service = Service::findOrFail($id);
-            
-            // Toggle status instead of deleting
-            $service->status = $service->status === 'active' ? 'inactive' : 'active';
-            $service->save();
+            $service->delete();
             
             // Check if request wants JSON (AJAX)
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
                     'success' => true,
-                    'message' => "Service {$service->status} successfully!",
+                    'message' => "Service deleted successfully!",
                     'service' => $service
                 ]);
             }
@@ -270,7 +278,7 @@ class ServiceController extends Controller
                 ->with('swal', [
                     'icon' => 'success',
                     'title' => 'Success!',
-                    'text' => "Service {$service->status} successfully!"
+                    'text' => "Service deleted successfully!"
                 ]);
                 
         } catch (\Exception $e) {
@@ -278,11 +286,53 @@ class ServiceController extends Controller
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error updating service status: ' . $e->getMessage()
+                    'message' => 'Error deleting service: ' . $e->getMessage()
                 ], 500);
             }
             
-            return back()->with('error', 'Error updating service status: ' . $e->getMessage());
+            return back()->with('error', 'Error deleting service: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore a soft-deleted service.
+     */
+    public function restore($id)
+    {
+        try {
+            $service = Service::onlyTrashed()->findOrFail($id);
+            $service->restore();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Service restored successfully!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error restoring service: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Permanently delete a service.
+     */
+    public function forceDelete($id)
+    {
+        try {
+            $service = Service::onlyTrashed()->findOrFail($id);
+            $service->forceDelete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Service permanently deleted!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error permanently deleting service: ' . $e->getMessage()
+            ], 500);
         }
     }
 

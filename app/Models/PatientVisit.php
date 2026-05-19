@@ -31,7 +31,6 @@ class PatientVisit extends Model
         'weight',
         'height',
         'blood_pressure',
-        'heart_rate',
         'oxygen_saturation',
         'respiratory_rate',
         'bmi',
@@ -65,6 +64,21 @@ class PatientVisit extends Model
         'payment_date' => 'date',
         'created_at' => 'datetime',
     ];
+
+    public function scopeAppointments($query)
+    {
+        return $query->where('visit_type', 'appointment');
+    }
+
+    public function scopeScheduled($query)
+    {
+        return $query->where('status', 'scheduled');
+    }
+
+    public function isScheduledAppointment(): bool
+    {
+        return $this->visit_type === 'appointment' && $this->status === 'scheduled';
+    }
 
     public function patient()
     {
@@ -143,5 +157,77 @@ class PatientVisit extends Model
     public function bill()
     {
         return $this->hasOne(Bill::class, 'visit_id');
+    }
+
+    public function getPractitionerAttribute($value): array
+    {
+        return $this->decodeMultiValue($value);
+    }
+
+    public function setPractitionerAttribute($value): void
+    {
+        $this->attributes['practitioner'] = $this->encodeMultiValue($value);
+    }
+
+    public function getDepartmentAttribute($value): array
+    {
+        return $this->decodeMultiValue($value);
+    }
+
+    public function setDepartmentAttribute($value): void
+    {
+        $this->attributes['department'] = $this->encodeMultiValue($value);
+    }
+
+    public function getPractitionerDisplayAttribute(): string
+    {
+        return $this->formatOptionLabels($this->practitioner, config('clinic.practitioners', []));
+    }
+
+    public function getDepartmentDisplayAttribute(): string
+    {
+        return $this->formatOptionLabels($this->department, config('clinic.departments', []));
+    }
+
+    protected function decodeMultiValue($value): array
+    {
+        if (empty($value)) {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return array_values($value);
+        }
+
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return array_values($decoded);
+        }
+
+        return [$value];
+    }
+
+    protected function encodeMultiValue($value): ?string
+    {
+        $items = $this->decodeMultiValue($value);
+
+        if (empty($items)) {
+            return null;
+        }
+
+        return json_encode(array_values(array_unique($items)));
+    }
+
+    protected function formatOptionLabels(array $keys, array $options): string
+    {
+        if (empty($keys)) {
+            return 'Not assigned';
+        }
+
+        $labels = array_map(function ($key) use ($options) {
+            return $options[$key] ?? ucwords(str_replace('-', ' ', $key));
+        }, $keys);
+
+        return implode(', ', $labels);
     }
 }

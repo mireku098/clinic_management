@@ -6,7 +6,6 @@ use App\Models\Patient;
 use App\Models\PatientVisit;
 use App\Models\Bill;
 use App\Models\Package;
-use App\Models\Appointment;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -116,22 +115,24 @@ class DashboardController extends Controller
     {
         // For now, return upcoming visits as appointments
         // In a full implementation, you'd use the Appointment model
-        return PatientVisit::with('patient')
+        return PatientVisit::appointments()
+            ->with('patient')
+            ->where('status', 'scheduled')
             ->whereDate('visit_date', '>=', Carbon::today())
             ->orderBy('visit_date')
             ->orderBy('visit_time')
             ->limit(5)
             ->get()
-            ->filter(function($visit) {
+            ->filter(function ($visit) {
                 return $visit->patient && $visit->visit_date;
             })
-            ->map(function($visit) {
+            ->map(function ($visit) {
                 return [
                     'patient_name' => $visit->patient->first_name . ' ' . $visit->patient->last_name,
-                    'service' => $visit->visit_type ?? 'General Consultation',
+                    'service' => $visit->reason_for_visit ?: 'Appointment',
                     'date' => $visit->visit_date->format('M d, Y'),
                     'time' => $visit->visit_time ? $visit->visit_time->format('h:i A') : 'TBD',
-                    'status' => $visit->visit_date->isToday() ? 'Scheduled' : 'Confirmed'
+                    'status' => 'Scheduled',
                 ];
             });
     }

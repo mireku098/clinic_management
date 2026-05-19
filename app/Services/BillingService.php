@@ -74,19 +74,18 @@ class BillingService
         if ($visit->package_id && $visit->package) {
             $totalAmount = $visit->package->total_cost;
         } else {
-            // Calculate total from JSON services and relationship table
+            // Calculate total from JSON data (primary source) or relationship table (fallback)
             $totalAmount = 0;
             
-            // Add services from JSON data
+            // Add services from JSON data if available
             if ($visit->selected_services) {
                 $servicesFromJson = json_decode($visit->selected_services, true) ?: [];
                 foreach ($servicesFromJson as $serviceData) {
                     $totalAmount += $serviceData['price'] ?? 0;
                 }
             }
-            
-            // Add services from relationship table (if any exist)
-            if ($visit->services()->exists()) {
+            // Only use relationship table if no JSON data (fallback for legacy data)
+            elseif ($visit->services()->exists()) {
                 $totalAmount += $visit->services()->sum('service_price');
             }
         }
@@ -127,19 +126,18 @@ class BillingService
         if ($visit->package_id && $visit->package) {
             $totalAmount = $visit->package->total_cost;
         } else {
-            // Calculate total from JSON services and relationship table
+            // Calculate total from JSON data (primary source) or relationship table (fallback)
             $totalAmount = 0;
             
-            // Add services from JSON data
+            // Add services from JSON data if available
             if ($visit->selected_services) {
                 $servicesFromJson = json_decode($visit->selected_services, true) ?: [];
                 foreach ($servicesFromJson as $serviceData) {
                     $totalAmount += $serviceData['price'] ?? 0;
                 }
             }
-            
-            // Add services from relationship table (if any exist)
-            if ($visit->services()->exists()) {
+            // Only use relationship table if no JSON data (fallback for legacy data)
+            elseif ($visit->services()->exists()) {
                 $totalAmount += $visit->services()->sum('service_price');
             }
         }
@@ -196,13 +194,13 @@ class BillingService
             }
         }
         
-        // Handle individual services - check both JSON and relationship table
+        // Handle individual services - prioritize JSON data over relationship table
         $servicesFromJson = [];
         if ($visit->selected_services) {
             $servicesFromJson = json_decode($visit->selected_services, true) ?: [];
         }
         
-        // Add services from JSON data
+        // Only add services from JSON data if available (this is the primary source)
         if (!empty($servicesFromJson)) {
             foreach ($servicesFromJson as $serviceData) {
                 $service = Service::find($serviceData['id']);
@@ -221,9 +219,8 @@ class BillingService
                 }
             }
         }
-        
-        // Add services from relationship table (if any exist)
-        if ($visit->services()->exists()) {
+        // Only add from relationship table if no JSON data exists (fallback for legacy data)
+        elseif ($visit->services()->exists()) {
             $services = $visit->services;
             
             foreach ($services as $patientService) {

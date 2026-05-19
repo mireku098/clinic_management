@@ -31,18 +31,18 @@ class StorePatientRequest extends FormRequest
             'gender' => ['required', Rule::in(['male', 'female'])],
             'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
             'age' => ['nullable', 'integer', 'min:0', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:20'], // Commented out regex validation - ['required', 'regex:/^0[0-9]{9}$/', Rule::unique('patients')->ignore($patientId)],
+            'phone' => ['required', 'string', 'max:20', Rule::unique('patients')->ignore($patientId)],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
             'occupation' => ['nullable', 'string', 'max:255'],
-            'height' => ['nullable', 'numeric', 'min:50', 'max:300'], // cm - reasonable human height range
+            'height' => ['nullable', 'numeric', 'min:10', 'max:300'],
             'marital_status' => ['nullable', Rule::in(['single', 'married', 'divorced', 'widowed'])],
             'blood_group' => ['nullable', Rule::in(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])],
             'sickle_cell_status' => ['nullable', Rule::in(['AA', 'AS', 'SS', 'Unknown'])],
             'allergies' => ['nullable', 'string', 'max:1000'],
             'chronic_conditions' => ['nullable', 'string', 'max:1000'],
-            'emergency_contact_name' => ['nullable', 'string', 'max:255'],
-            'emergency_contact_phone' => ['nullable', 'string', 'max:20'], // Commented out regex validation - ['nullable', 'regex:/^0[0-9]{9}$/'],
+            'emergency_contact_name' => ['required', 'string', 'max:255'],
+            'emergency_contact_phone' => ['required', 'string', 'max:20'],
             'patient_photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
         ];
     }
@@ -50,8 +50,15 @@ class StorePatientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            // 'phone.regex' => 'Please enter a valid Ghanaian phone number (e.g., 0201234567).', // Commented out - regex validation removed
-            // 'emergency_contact_phone.regex' => 'Please enter a valid emergency contact number (e.g., 0201234567).', // Commented out - regex validation removed
+            'first_name.required' => "Please enter patient's first name",
+            'last_name.required' => "Please enter patient's last name",
+            'gender.required' => "Gender is required",
+            'date_of_birth.required' => "Date of birth is required",
+            'date_of_birth.before_or_equal' => "Date of birth cannot be in the future",
+            'phone.required' => "Phone number is required",
+            'phone.unique' => "This phone number is already registered",
+            'emergency_contact_name.required' => "Emergency contact name is required",
+            'emergency_contact_phone.required' => "Emergency contact phone is required",
             'patient_photo.image' => 'The file must be an image.',
             'patient_photo.mimes' => 'The photo must be a JPEG, JPG, or PNG file.',
             'patient_photo.max' => 'The photo may not be larger than 2MB.',
@@ -69,6 +76,16 @@ class StorePatientRequest extends FormRequest
 
     protected function failedValidation(Validator $validator)
     {
+        if ($this->expectsJson()) {
+            $response = response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+            
+            throw new \Illuminate\Validation\ValidationException($validator, $response);
+        }
+
         session()->flash('swal', [
             'icon' => 'error',
             'title' => 'Validation Error',

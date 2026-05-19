@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 use App\Models\ServiceResult;
 use App\Observers\ServiceResultObserver;
 
@@ -25,6 +26,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        ServiceResult::observe(ServiceResultObserver::class);
+        \App\Models\ServiceResult::observe(\App\Observers\ServiceResultObserver::class);
+
+        $appUrl = config('app.url');
+        if (! empty($appUrl)) {
+            URL::forceRootUrl(rtrim($appUrl, '/'));
+
+            if (strpos($appUrl, 'https://') === 0) {
+                URL::forceScheme('https');
+            }
+        }
     }
 }

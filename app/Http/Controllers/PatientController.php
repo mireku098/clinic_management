@@ -16,9 +16,70 @@ class PatientController extends Controller
     /**
      * Display a listing of patients.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $patients = Patient::latest()->get();
+        $query = Patient::query();
+
+        // Search Patients (by name, code, or phone)
+        if ($request->filled('search')) {
+            $searchTerm = $request->get('search');
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('first_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('last_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('patient_code', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('phone', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        // Filter by Gender
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->get('gender'));
+        }
+
+        // Filter by Age Range
+        if ($request->filled('age_range')) {
+            $ageRange = $request->get('age_range');
+            switch ($ageRange) {
+                case '0-18':
+                    $query->whereBetween('age', [0, 18]);
+                    break;
+                case '19-35':
+                    $query->whereBetween('age', [19, 35]);
+                    break;
+                case '36-50':
+                    $query->whereBetween('age', [36, 50]);
+                    break;
+                case '51+':
+                    $query->where('age', '>=', 51);
+                    break;
+            }
+        }
+
+        // Sorting
+        $sort = $request->get('sort', 'latest');
+        switch ($sort) {
+            case 'name_asc':
+                $query->orderBy('first_name', 'asc')->orderBy('last_name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('first_name', 'desc')->orderBy('last_name', 'desc');
+                break;
+            case 'age_asc':
+                $query->orderBy('age', 'asc');
+                break;
+            case 'age_desc':
+                $query->orderBy('age', 'desc');
+                break;
+            case 'oldest':
+                $query->oldest();
+                break;
+            default:
+                $query->latest();
+                break;
+        }
+
+        $patients = $query->paginate(10)->withQueryString();
+        
         return view('patients', compact('patients'));
     }
 
@@ -27,7 +88,19 @@ class PatientController extends Controller
      */
     public function create()
     {
-        return view('patients.add');
+        // Calculate real registration statistics
+        $stats = [
+            'today' => Patient::whereDate('created_at', today())->count(),
+            'this_week' => Patient::whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek()
+            ])->count(),
+            'this_month' => Patient::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count(),
+        ];
+        
+        return view('patients.add', compact('stats'));
     }
 
     /**
@@ -337,7 +410,7 @@ class PatientController extends Controller
             
             return response()->json([
                 'success' => true,
-                'data' => $contextData['medicalHistory']
+                'data' => $contextData['medical_history']
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -431,18 +504,77 @@ class PatientController extends Controller
             
             // Get service results directly by patient_id
             $serviceResults = \App\Models\ServiceResult::where('patient_id', $patient->id)
-            ->with(['service', 'visit'])
-            ->latest()
-            ->get();
+                ->with(['service', 'package', 'visit', 'recorder', 'approver'])
+                ->latest()
+                ->get();
+            
+            $resultsData = $serviceResults->map(function($result) {
+                return [
+                    'id' => $result->id,
+                    'service_name' => $result->service ? $result->service->service_name : ($result->package ? $result->package->package_name : 'Unknown Service'),
+                    'result_type' => $result->result_type,
+                    'result_value' => $result->getResultValue(),
+                    'status' => $result->status,
+                    'recorded_by' => $result->recorder ? $result->recorder->name : 'System',
+                    'recorded_at' => $result->created_at ? $result->created_at->format('M d, Y H:i') : 'N/A',
+                ];
+            });
             
             return response()->json([
                 'success' => true,
-                'data' => $serviceResults
+                'data' => [
+                    'service_results' => $resultsData,
+                    'has_results' => $resultsData->isNotEmpty()
+                ]
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading service results: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get patient prescriptions data for API
+     */
+    public function getPrescriptionsData($patientCode)
+    {
+        try {
+            // Return coming soon response for now
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'message' => 'Prescription management coming soon',
+                    'status' => 'coming_soon'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading prescriptions: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get patient medications data for API
+     */
+    public function getMedicationsData($patientCode)
+    {
+        try {
+            // Return coming soon response for now
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'message' => 'Medication management coming soon',
+                    'status' => 'coming_soon'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading medications: ' . $e->getMessage()
             ], 500);
         }
     }

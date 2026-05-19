@@ -11,6 +11,7 @@ use App\Models\PatientService;
 use App\Models\PatientPackage;
 use App\Models\Service;
 use App\Models\Package;
+use App\Models\ServiceResult;
 use Illuminate\Support\Facades\Log;
 
 class PatientContextService
@@ -38,8 +39,9 @@ class PatientContextService
                 'patient' => $patient,
                 'overview' => self::getOverviewData($patient),
                 'vitals' => self::getVitalsData($patient),
-                'medicalHistory' => self::getMedicalHistoryData($patient),
+                'medical_history' => self::getMedicalHistoryData($patient),
                 'billing' => self::getBillingData($patient),
+                'service_results' => self::getServiceResultsData($patient),
             ];
         } catch (\Exception $e) {
             Log::error("Error loading patient context for {$patientCode}: " . $e->getMessage());
@@ -90,7 +92,7 @@ class PatientContextService
         $vitals = $patient->visits()
             ->whereNotNull('temperature')
             ->orWhereNotNull('blood_pressure')
-            ->orWhereNotNull('heart_rate')
+            ->orWhereNotNull('pulse_rate')
             ->orWhereNotNull('oxygen_saturation')
             ->orWhereNotNull('respiratory_rate')
             ->orWhereNotNull('weight')
@@ -105,7 +107,7 @@ class PatientContextService
                     'visit_time' => $visit->visit_time ? $visit->visit_time->format('H:i') : null,
                     'temperature' => $visit->temperature ? number_format($visit->temperature, 1) . '°C' : null,
                     'blood_pressure' => $visit->blood_pressure,
-                    'heart_rate' => $visit->heart_rate ? $visit->heart_rate . ' bpm' : null,
+                    'pulse_rate' => $visit->pulse_rate ? $visit->pulse_rate . ' bpm' : null,
                     'oxygen_saturation' => $visit->oxygen_saturation ? $visit->oxygen_saturation . '%' : null,
                     'respiratory_rate' => $visit->respiratory_rate ? $visit->respiratory_rate . '/min' : null,
                     'weight' => $visit->weight ? number_format($visit->weight, 1) . ' kg' : null,
@@ -139,8 +141,10 @@ class PatientContextService
                 'history_present_illness' => $visit->history_present_illness,
                 'assessment' => $visit->assessment,
                 'treatment_plan' => $visit->treatment_plan,
-                'practitioner' => $visit->practitioner,
-                'department' => $visit->department,
+                'practitioner' => $visit->practitioner_display,
+                'department' => $visit->department_display,
+                'practitioners' => $visit->practitioner,
+                'departments' => $visit->department,
                 'services' => $visit->services->map(function($service) {
                     return [
                         'id' => $service->service_id,
@@ -217,6 +221,46 @@ class PatientContextService
                 'partial_bills' => $bills->where('status', 'partial')->count(),
                 'pending_bills' => $bills->where('status', 'pending')->count(),
             ],
+        ];
+    }
+
+    /**
+     * Get service results data
+     */
+    private static function getServiceResultsData(Patient $patient): array
+    {
+        $serviceResults = ServiceResult::where('patient_id', $patient->id)
+            ->with(['service', 'package', 'visit', 'recorder', 'approver'])
+            ->latest()
+            ->get();
+
+        $resultsData = $serviceResults->map(function($result) {
+            return [
+                'id' => $result->id,
+                'service_name' => $result->service ? $result->service->service_name : ($result->package ? $result->package->package_name : 'Unknown Service'),
+                'service_id' => $result->service_id,
+                'package_id' => $result->package_id,
+                'visit_id' => $result->visit_id,
+                'visit_code' => $result->visit ? $result->visit->visit_code : 'N/A',
+                'result_type' => $result->result_type,
+                'result_value' => $result->getResultValue(),
+                'status' => $result->status,
+                'recorded_by' => $result->recorder ? $result->recorder->name : 'System',
+                'recorded_at' => $result->recorded_at ? $result->recorded_at->format('M d, Y') : $result->created_at->format('M d, Y'),
+                'approved_by' => $result->approver ? $result->approver->name : null,
+                'approved_at' => $result->approved_at ? $result->approved_at->format('M d, Y H:i') : null,
+                'notes' => $result->notes,
+                'is_editable' => $result->isEditable(),
+                'is_approved' => $result->isApproved(),
+            ];
+        });
+
+        return [
+            'service_results' => $resultsData,
+            'has_results' => $resultsData->isNotEmpty(),
+            'total_results' => $resultsData->count(),
+            'pending_results' => $resultsData->where('status', 'pending_approval')->count() + $resultsData->where('status', 'draft')->count(),
+            'approved_results' => $resultsData->where('status', 'approved')->count(),
         ];
     }
 }

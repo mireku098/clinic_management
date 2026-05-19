@@ -19,6 +19,38 @@ class BillingController extends Controller
     }
 
     /**
+     * Show billing page for a specific patient
+     */
+    public function billingUser(Request $request): View
+    {
+        $patientCode = $request->get('patient');
+        $patient = \App\Models\Patient::where('patient_code', $patientCode)->firstOrFail();
+        
+        // Get all bills for this patient with relationships
+        $bills = Bill::with(['patient', 'visit', 'items.service', 'items.package', 'payments'])
+            ->where('patient_id', $patient->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Calculate statistics
+        $stats = [
+            'total_bills' => $bills->count(),
+            'total_amount' => $bills->sum('total_amount'),
+            'paid_amount' => $bills->sum(function($bill) {
+                return $bill->payments->sum('amount');
+            }),
+            'outstanding_amount' => $bills->sum(function($bill) {
+                return $bill->total_amount - $bill->payments->sum('amount');
+            }),
+            'paid_bills' => $bills->where('status', 'paid')->count(),
+            'pending_bills' => $bills->where('status', 'pending')->count(),
+            'overdue_bills' => $bills->where('status', 'overdue')->count(),
+        ];
+        
+        return view('billing.user', compact('patient', 'bills', 'stats'));
+    }
+
+    /**
      * Get bills with filtering and search
      */
     public function getBills(Request $request): JsonResponse
@@ -26,16 +58,17 @@ class BillingController extends Controller
         try {
             $query = Bill::with(['patient', 'visit', 'items.service', 'items.package', 'payments']);
             
-            // Filter by patient
-            if ($request->filled('patient_id')) {
-                $query->where('patient_id', $request->patient_id);
+            // Filter by search (patient name, code, or phone)
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->whereHas('patient', function($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('patient_code', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
             }
-            
-            // Filter by visit
-            if ($request->filled('visit_id')) {
-                $query->where('visit_id', $request->visit_id);
-            }
-            
+
             // Filter by status
             if ($request->filled('status')) {
                 $query->where('status', $request->status);

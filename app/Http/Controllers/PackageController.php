@@ -18,6 +18,101 @@ use Exception;
 class PackageController extends Controller
 {
     /**
+     * Display a listing of the packages.
+     */
+    public function index(Request $request)
+    {
+        $query = Package::with('services.service');
+
+        // Show deleted if requested
+        if ($request->get('view') === 'trash') {
+            $query->onlyTrashed();
+        }
+
+        $packages = $query->latest()->get();
+
+        $stats = [
+            'total' => Package::count(),
+            'active' => Package::where('status', 'active')->count(),
+            'inactive' => Package::where('status', 'inactive')->count(),
+            'deleted' => Package::onlyTrashed()->count(),
+            'total_weeks' => Package::sum('duration_weeks')
+        ];
+
+        return view('packages', compact('packages', 'stats'));
+    }
+
+    /**
+     * Delete a package.
+     */
+    public function destroy(Request $request, $id)
+    {
+        try {
+            $package = Package::findOrFail($id);
+            $package->delete();
+
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Package deleted successfully!'
+                ]);
+            }
+
+            return redirect()->route('packages')->with('success', 'Package deleted successfully!');
+        } catch (\Exception $e) {
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error deleting package: ' . $e->getMessage()
+                ], 500);
+            }
+            return back()->with('error', 'Error deleting package: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore a soft-deleted package.
+     */
+    public function restore($id)
+    {
+        try {
+            $package = Package::onlyTrashed()->findOrFail($id);
+            $package->restore();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Package restored successfully!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error restoring package: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Permanent delete a package.
+     */
+    public function forceDelete($id)
+    {
+        try {
+            $package = Package::onlyTrashed()->findOrFail($id);
+            $package->forceDelete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Package deleted permanently!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error permanently deleting package: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Update an existing package.
      */
     public function update(StorePackageRequest $request, $id)
