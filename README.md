@@ -159,5 +159,5 @@ Each major system has its own documentation file:
 
 ---
 
-**Last Updated**: February 2026
-**Version**: 1.0.0
+**Last Updated**: May 2026
+**Version**: 1.7.2
