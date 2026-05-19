@@ -1,0 +1,724 @@
+TERMS OF REFERENCE (ToR)
+PHP-Based Clinic Management System
+For Renew Wellness Physiotherapy & Naturopathy Clinic
+1. Background & Purpose
+Renew Wellness Physiotherapy & Naturopathy Clinic requires a secure, scalable, and modular PHP-based Clinic Management System to automate patient records, clinical services, treatment packages, appointments, billing, and payments.
+The system will replace manual and semi-digital processes, improve operational efficiency, ensure accurate medical and financial records, and enhance patient experience.
+2. Overall Objectives
+The Clinic Management System shall:
+1.	Maintain comprehensive patient medical and demographic records
+2.	Track every patient visit/attendance
+3.	Manage treatment packages and services
+4.	Automate billing, part-payments, and outstanding balances
+5.	Support appointment scheduling and reminders
+6.	Provide audit-ready financial and clinical records
+7.	Ensure data security, accuracy, and scalability
+3. Scope of the System
+The system shall be developed using PHP (Laravel or similar framework recommended) with a relational database (MySQL/PostgreSQL).
+The scope includes:
+·	Patient Management
+·	Attendance & Visit Tracking
+·	Package Management
+·	Service Management
+·	Billing & Payment Management
+·	Appointment Scheduling & Notifications
+·	Reporting & Search
+·	User Roles & Security
+4. Functional Requirements
+4.1 Patient Biodata Management (CRUD)
+The system shall provide full Create, Read, Update, Delete (CRUD) functionality for patient records.
+Patient Biodata Fields (minimum):
+·	Patient ID (auto-generated, unique)
+·	First Name
+·	Last Name
+·	Gender
+·	Date of Birth (auto-calculate age)
+·	Age (calculated)
+·	Phone Number(s)
+·	Email Address
+·	Residential Address
+·	Emergency Contact
+·	Blood Group
+·	Sickle Cell Status
+·	Allergies
+·	Chronic Conditions
+·	Occupation
+·	Marital Status
+·	Registration Date
+·	Patient Photo (optional)
+Key Requirements:
+·	Patient ID must be reusable across all modules
+·	Searchable by name, phone number, or ID
+·	Soft delete (records not permanently erased)
+4.2 Patient Attendance & Visit Records
+The system shall record every visit/attendance of a patient to the clinic.
+Visit Data Captured:
+·	Visit ID
+·	Patient ID (auto-linked)
+·	Date of Visit
+·	Time of Visit
+·	Reason for Visit:
+o	Appointment
+o	Walk-in
+·	Assigned Package (if any)
+·	Vital Signs:
+o	Temperature
+o	Weight
+o	Blood Pressure (optional)
+o	Pulse Rate (optional)
+·	Attending Staff
+·	Notes / Observations
+Key Requirements:
+·	Patient biodata auto-loads when Patient ID is selected
+·	Multiple visits per patient allowed
+·	Visit history searchable by date, patient, or service
+4.3 Package Management
+The system shall support CRUD operations for treatment packages, based on the clinic’s approved package list 
+Renew Clinic Packages
+.
+Package Attributes:
+·	Package ID
+·	Package Name
+·	Category (e.g., Physiotherapy, Female Health, Cardio-Metabolic)
+·	Target Condition(s)
+·	Package Description
+·	Duration (weeks/months)
+·	Included Services (sessions & quantities)
+·	Total Cost
+·	Active/Inactive Status
+Key Requirements:
+·	Packages must be reusable and editable
+·	Packages can be assigned to multiple patients
+·	Package history retained even if later modified
+4.4 Package Assignment & Billing
+When a package is selected for a patient:
+·	The system shall automatically:
+o	Generate a billing record
+o	Set Total Amount Owing
+o	Link bill to Patient ID and Package ID
+Billing Record Fields:
+·	Bill ID
+·	Patient ID
+·	Package ID
+·	Total Cost
+·	Amount Paid (cumulative)
+·	Outstanding Balance
+·	Payment Status (Unpaid / Partially Paid / Fully Paid)
+·	Date Created
+Key Requirements:
+·	Historical bills must remain immutable
+·	Package reassignment creates a new bill
+·	Bills must be searchable and filterable
+4.5 Services Management (CRUD)
+The system shall allow management of individual clinical services.
+Service Examples:
+·	Consultation
+·	Blood Count
+·	Cholesterol Test
+·	Ultrasound Scan
+·	Quantum Analyzer Scan
+·	Physiotherapy Session
+·	Massage Therapy
+Service Attributes:
+·	Service ID
+·	Service Name
+·	Category
+·	Unit Price
+·	Description
+·	Result Type:
+o	Numeric
+o	Text
+o	File Upload (PDF/Image)
+·	Active/Inactive Status
+4.6 Service Results & Documentation
+For each service rendered:
+·	Results may be:
+o	Entered manually
+o	Uploaded as documents/images
+·	Results must be:
+o	Linked to patient, visit, and service
+o	Time-stamped
+o	Non-editable after approval (optional)
+4.7 Services Billing & Consolidation
+·	Multiple services can be added to a patient’s account
+·	Services can be:
+o	Paid individually
+o	Paid together with package bills
+·	System must calculate:
+o	Total service cost
+o	Combined outstanding balance
+4.8 Appointment Scheduling & Reminders
+Patients shall be able to:
+·	Choose preferred package
+·	Select:
+o	Session dates
+o	Session times
+System Features:
+·	Calendar-based scheduling
+·	Session count tracking
+·	Conflict prevention
+·	Automated reminders via:
+o	SMS
+o	Email (optional)
+Reminder Timing:
+·	24 hours before appointment
+·	Same-day reminder
+4.9 Payments & Financial Tracking
+The system shall support partial and full payments.
+Payment Record Fields:
+·	Payment ID
+·	Patient ID
+·	Related Bill ID(s)
+·	Amount Owing Before Payment
+·	Amount Paid
+·	Outstanding Balance After Payment
+·	Payment Method (Cash, Mobile Money, Bank, POS)
+·	Date & Time of Payment
+·	Received By (staff)
+Key Requirements:
+·	One payment can cover multiple services/packages
+·	Payment history must be immutable
+·	Printable receipts
+5. Reporting & Search
+The system shall generate:
+·	Patient visit history
+·	Outstanding balances
+·	Daily/Monthly income reports
+·	Package uptake statistics
+·	Service utilization reports
+·	Payment summaries
+All reports must be:
+·	Filterable by date
+·	Exportable (PDF, Excel)
+6. User Roles & Access Control
+Suggested Roles:
+·	Administrator
+·	Doctor/Naturopath
+·	Physiotherapist
+·	Front Desk
+·	Accountant
+Each role shall have:
+·	Controlled access permissions
+·	Audit logs for actions performed
+7. Non-Functional Requirements
+·	Secure authentication (hashed passwords)
+·	Role-based access control
+·	Daily database backups
+·	Data encryption for sensitive fields
+·	Responsive UI (desktop & tablet friendly)
+·	Scalable architecture
+8. Deliverables
+1.	Fully functional PHP Clinic Management System
+2.	Database schema & documentation
+3.	User manual
+4.	Deployment guide
+5.	Source code & system ownership transfer
+9. Future Enhancements (Optional)
+·	Patient portal
+·	Online payments
+·	Inventory & herbal stock management
+·	Insurance integration
+·	Mobile app version
+
+DATABASE SCHEMA DOCUMENT
+PHP-Based Clinic Management System
+Renew Wellness Physiotherapy & Naturopathy Clinic
+1. Introduction
+This document defines the complete database schema for the PHP-based Clinic Management System (CMS). It serves as a single source of truth for developers, system architects, and stakeholders during design, development, testing, and deployment.
+The schema supports:
+·	Patient biodata management
+·	Visit and attendance tracking
+·	Treatment packages
+·	Clinical services and results
+·	Appointment scheduling
+·	Billing and part-payment management
+·	Financial reporting and auditing
+The database is designed for MySQL or PostgreSQL and is compatible with Laravel or similar PHP MVC frameworks.
+2. Design Principles
+·	Normalized relational structure (3NF)
+·	Soft deletes for medical and financial records
+·	Immutable financial history
+·	Support for partial payments
+·	Auditability and traceability
+·	Scalability and extensibility
+3. Core Tables
+3.1 roles
+Defines user roles and access levels.
+Fields:
+·	id (PK)
+·	role_name
+·	description
+3.2 users
+System users (clinic staff).
+Fields:
+·	id (PK)
+·	name
+·	email
+·	phone
+·	password
+·	role_id (FK → roles.id)
+·	status (active/inactive)
+·	created_at
+·	updated_at
+3.3 patients
+Stores comprehensive patient biodata.
+Fields:
+·	id (PK)
+·	patient_code (UNIQUE)
+·	first_name
+·	last_name
+·	gender
+·	date_of_birth
+·	age (derived)
+·	phone
+·	email
+·	address
+·	occupation
+·	marital_status
+·	emergency_contact_name
+·	emergency_contact_phone
+·	blood_group
+·	sickle_cell_status
+·	allergies
+·	chronic_conditions
+·	photo_path
+·	registered_at
+·	created_at
+·	updated_at
+·	deleted_at (soft delete)
+4. Clinical Operations
+4.1 patient_visits
+Records every patient attendance.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	visit_date
+·	visit_time
+·	visit_type (appointment / walk-in)
+·	temperature
+·	weight
+·	blood_pressure
+·	pulse_rate
+·	reason_for_visit
+·	notes
+·	attended_by (FK → users.id)
+·	created_at
+4.2 services
+Defines all clinic services.
+Fields:
+·	id (PK)
+·	service_code (UNIQUE)
+·	service_name
+·	category
+·	price
+·	result_type (text / numeric / file)
+·	description
+·	status (active/inactive)
+·	created_at
+·	updated_at
+4.3 patient_services
+Tracks services rendered to patients.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	visit_id (FK → patient_visits.id)
+·	service_id (FK → services.id)
+·	service_price (locked at time of service)
+·	status (pending/completed)
+·	created_at
+4.4 service_results
+Stores investigation and service outcomes.
+Fields:
+·	id (PK)
+·	patient_service_id (FK → patient_services.id)
+·	result_text
+·	result_file_path
+·	recorded_by (FK → users.id)
+·	recorded_at
+5. Package Management
+5.1 packages
+Defines treatment packages.
+Fields:
+·	id (PK)
+·	package_code (UNIQUE)
+·	package_name
+·	category
+·	description
+·	duration_weeks
+·	total_cost
+·	status (active/inactive)
+·	created_at
+·	updated_at
+5.2 package_services
+Maps services included in packages.
+Fields:
+·	id (PK)
+·	package_id (FK → packages.id)
+·	service_id (FK → services.id)
+·	quantity
+5.3 patient_packages
+Assigned packages per patient.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	package_id (FK → packages.id)
+·	start_date
+·	end_date
+·	status (active/completed/cancelled)
+·	created_at
+6. Billing & Payments
+6.1 bills
+Central billing table for packages and services.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	bill_type (package / service / combined)
+·	reference_id (package_id or visit_id)
+·	total_amount
+·	amount_paid
+·	balance
+·	status (unpaid / partial / paid)
+·	created_at
+6.2 bill_items
+Breakdown of bill components.
+Fields:
+·	id (PK)
+·	bill_id (FK → bills.id)
+·	item_type (package/service)
+·	item_id
+·	description
+·	amount
+6.3 payments
+Tracks full and partial payments.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	bill_id (FK → bills.id)
+·	amount_before
+·	amount_paid
+·	balance_after
+·	payment_method (cash/momo/bank/pos)
+·	received_by (FK → users.id)
+·	payment_date
+·	payment_time
+7. Appointments & Notifications
+7.1 appointments
+Manages scheduling and sessions.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	package_id (FK → packages.id, nullable)
+·	appointment_date
+·	appointment_time
+·	session_number
+·	status (scheduled/completed/cancelled)
+·	created_at
+7.2 notifications
+Appointment reminders and alerts.
+Fields:
+·	id (PK)
+·	patient_id (FK → patients.id)
+·	appointment_id (FK → appointments.id)
+·	message
+·	channel (sms/email)
+·	sent_at
+·	status (sent/failed)
+8. Auditing & Security
+8.1 audit_logs
+Tracks critical system actions.
+Fields:
+·	id (PK)
+·	user_id (FK → users.id)
+·	action
+·	table_name
+·	record_id
+·	ip_address
+·	created_at
+9. Key Relationships Summary
+·	Patients → Visits → Services → Results
+·	Patients → Packages → Bills → Payments
+·	Packages → Services (many-to-many)
+·	Appointments → Notifications
+·	Users → Audit Logs
+10. Data Integrity Rules
+·	Financial records are never hard-deleted
+·	Bills become immutable once fully paid
+·	Payments cannot exceed outstanding balance
+·	Package and service prices are locked at transaction time
+11. Recommended Indexes
+·	patients.patient_code
+·	patient_visits.patient_id
+·	patient_services.visit_id
+·	bills.patient_id
+·	payments.payment_date
+·	appointments.appointment_date
+12. Conclusion
+This database schema provides a robust foundation for a full-featured Clinic Management System supporting clinical, administrative, and financial operations. It is ready for implementation, migration scripting, and API development.
+
+
+
+-- ================================
+-- DATABASE
+-- ================================
+CREATE DATABASE IF NOT EXISTS clinic_management
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE clinic_management;
+
+-- ================================
+-- ROLES
+-- ================================
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL,
+    description TEXT
+);
+
+-- ================================
+-- USERS
+-- ================================
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    phone VARCHAR(30),
+    password VARCHAR(255) NOT NULL,
+    role_id INT NOT NULL,
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+-- ================================
+-- PATIENTS
+-- ================================
+CREATE TABLE patients (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_code VARCHAR(50) UNIQUE NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    gender ENUM('male','female','other'),
+    date_of_birth DATE,
+    age INT,
+    phone VARCHAR(30),
+    email VARCHAR(150),
+    address TEXT,
+    occupation VARCHAR(100),
+    marital_status VARCHAR(50),
+    emergency_contact_name VARCHAR(150),
+    emergency_contact_phone VARCHAR(30),
+    blood_group VARCHAR(5),
+    sickle_cell_status ENUM('AA','AS','SS','Unknown'),
+    allergies TEXT,
+    chronic_conditions TEXT,
+    photo_path VARCHAR(255),
+    registered_at DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+);
+
+-- ================================
+-- PATIENT VISITS
+-- ================================
+CREATE TABLE patient_visits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    visit_date DATE NOT NULL,
+    visit_time TIME NOT NULL,
+    visit_type ENUM('appointment','walk-in') NOT NULL,
+    temperature DECIMAL(5,2),
+    weight DECIMAL(5,2),
+    blood_pressure VARCHAR(20),
+    pulse_rate INT,
+    reason_for_visit TEXT,
+    notes TEXT,
+    attended_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (attended_by) REFERENCES users(id)
+);
+
+-- ================================
+-- SERVICES
+-- ================================
+CREATE TABLE services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_code VARCHAR(50) UNIQUE NOT NULL,
+    service_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100),
+    price DECIMAL(10,2) NOT NULL,
+    result_type ENUM('text','numeric','file'),
+    description TEXT,
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ================================
+-- PATIENT SERVICES
+-- ================================
+CREATE TABLE patient_services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    visit_id INT NOT NULL,
+    service_id INT NOT NULL,
+    service_price DECIMAL(10,2) NOT NULL,
+    status ENUM('pending','completed') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (visit_id) REFERENCES patient_visits(id),
+    FOREIGN KEY (service_id) REFERENCES services(id)
+);
+
+-- ================================
+-- SERVICE RESULTS
+-- ================================
+CREATE TABLE service_results (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_service_id INT NOT NULL,
+    result_text TEXT,
+    result_file_path VARCHAR(255),
+    recorded_by INT,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_service_id) REFERENCES patient_services(id),
+    FOREIGN KEY (recorded_by) REFERENCES users(id)
+);
+
+-- ================================
+-- PACKAGES
+-- ================================
+CREATE TABLE packages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    package_code VARCHAR(50) UNIQUE NOT NULL,
+    package_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100),
+    description TEXT,
+    duration_weeks INT,
+    total_cost DECIMAL(10,2) NOT NULL,
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ================================
+-- PACKAGE SERVICES
+-- ================================
+CREATE TABLE package_services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    package_id INT NOT NULL,
+    service_id INT NOT NULL,
+    quantity INT NOT NULL,
+    FOREIGN KEY (package_id) REFERENCES packages(id),
+    FOREIGN KEY (service_id) REFERENCES services(id)
+);
+
+-- ================================
+-- PATIENT PACKAGES
+-- ================================
+CREATE TABLE patient_packages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    package_id INT NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    status ENUM('active','completed','cancelled') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (package_id) REFERENCES packages(id)
+);
+
+-- ================================
+-- BILLS
+-- ================================
+CREATE TABLE bills (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    bill_type ENUM('package','service','combined') NOT NULL,
+    reference_id INT,
+    total_amount DECIMAL(10,2) NOT NULL,
+    amount_paid DECIMAL(10,2) DEFAULT 0,
+    balance DECIMAL(10,2) NOT NULL,
+    status ENUM('unpaid','partial','paid') DEFAULT 'unpaid',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(id)
+);
+
+-- ================================
+-- BILL ITEMS
+-- ================================
+CREATE TABLE bill_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bill_id INT NOT NULL,
+    item_type ENUM('package','service') NOT NULL,
+    item_id INT NOT NULL,
+    description VARCHAR(255),
+    amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (bill_id) REFERENCES bills(id)
+);
+
+-- ================================
+-- PAYMENTS
+-- ================================
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    bill_id INT NOT NULL,
+    amount_before DECIMAL(10,2) NOT NULL,
+    amount_paid DECIMAL(10,2) NOT NULL,
+    balance_after DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('cash','momo','bank','pos') NOT NULL,
+    received_by INT,
+    payment_date DATE,
+    payment_time TIME,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (bill_id) REFERENCES bills(id),
+    FOREIGN KEY (received_by) REFERENCES users(id)
+);
+
+-- ================================
+-- APPOINTMENTS
+-- ================================
+CREATE TABLE appointments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    package_id INT NULL,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
+    session_number INT,
+    status ENUM('scheduled','completed','cancelled') DEFAULT 'scheduled',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (package_id) REFERENCES packages(id)
+);
+
+-- ================================
+-- NOTIFICATIONS
+-- ================================
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    appointment_id INT NOT NULL,
+    message TEXT,
+    channel ENUM('sms','email'),
+    sent_at TIMESTAMP,
+    status ENUM('sent','failed'),
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+);
+
+-- ================================
+-- AUDIT LOGS
+-- ================================
+CREATE TABLE audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    action VARCHAR(255),
+    table_name VARCHAR(100),
+    record_id INT,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
